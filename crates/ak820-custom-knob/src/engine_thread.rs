@@ -11,6 +11,7 @@ use knob_win::clock;
 use knob_win::input::{self, InputEvent};
 
 use crate::actions::Actions;
+use crate::i18n::{Text, tr};
 use crate::ui::{self, UiEvent};
 
 pub enum EngineMsg {
@@ -29,8 +30,8 @@ pub fn start(config: Config) -> Sender<EngineMsg> {
             if result.is_err() {
                 log::error!("engine crashed; the knob is back to its normal behaviour");
                 ui::notify(UiEvent::Warning {
-                    title: "AK820 knob stopped".into(),
-                    text: "Something went wrong. The knob works as a normal volume knob until you restart the program.".into(),
+                    title: tr(Text::CrashTitle).into(),
+                    text: tr(Text::CrashMessage).into(),
                 });
             }
         })

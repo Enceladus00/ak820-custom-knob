@@ -13,36 +13,40 @@
 mod actions;
 mod config_file;
 mod engine_thread;
+mod i18n;
 mod logger;
 mod osd;
-mod paths;
 mod ui;
 
 use std::sync::OnceLock;
 use std::sync::mpsc::Sender;
 use std::thread;
 
+use knob_core::config::AUTO_LANGUAGE;
 use knob_win::input::{self, InputEvent};
+use knob_win::paths;
 use windows::Win32::Foundation::{CloseHandle, ERROR_ALREADY_EXISTS, GetLastError, HANDLE};
 use windows::Win32::System::Threading::CreateMutexW;
 use windows::Win32::UI::HiDpi::{
     DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2, SetProcessDpiAwarenessContext,
 };
 use windows::Win32::UI::WindowsAndMessaging::{MB_ICONINFORMATION, MB_OK, MessageBoxW};
-use windows::core::w;
+use windows::core::{HSTRING, w};
 
 use crate::engine_thread::EngineMsg;
+use crate::i18n::{Text, tr, trf};
 use crate::ui::UiEvent;
 
 static ENGINE: OnceLock<Sender<EngineMsg>> = OnceLock::new();
 
 fn main() {
+    i18n::set_language(AUTO_LANGUAGE); // until the config is read
     let Some(_instance) = single_instance() else {
         unsafe {
             MessageBoxW(
                 None,
-                w!("AK820 knob is already running (see the tray)."),
-                w!("AK820 knob"),
+                &HSTRING::from(tr(Text::AlreadyRunning)),
+                &HSTRING::from(tr(Text::Tooltip)),
                 MB_OK | MB_ICONINFORMATION,
             );
         }
@@ -60,6 +64,7 @@ fn main() {
     if let Some(e) = &config_error {
         log::warn!("config has errors, using the built-in default: {e}");
     }
+    i18n::set_language(&config.ui.language);
 
     let engine = engine_thread::start(config);
     let _ = ENGINE.set(engine.clone());
@@ -67,13 +72,15 @@ fn main() {
     config_file::watch(move |result| match result {
         Ok(config) => {
             log::info!("config reloaded");
+            i18n::set_language(&config.ui.language);
             let _ = engine.send(EngineMsg::Config(config));
-            ui::notify(UiEvent::Osd("Settings reloaded".into()));
+            ui::notify(UiEvent::LanguageChanged);
+            ui::notify(UiEvent::Osd(tr(Text::OsdReloaded).into()));
         }
         Err(e) => {
             log::warn!("config has errors, keeping the previous one: {e}");
             ui::notify(UiEvent::Warning {
-                title: "Config file has an error".into(),
+                title: tr(Text::ConfigErrorTitle).into(),
                 text: e,
             });
         }
@@ -85,7 +92,7 @@ fn main() {
             if let Err(e) = input::run(forward_input) {
                 log::error!("input listeners failed: {e}");
                 ui::notify(UiEvent::Warning {
-                    title: "AK820 knob can't read the keyboard".into(),
+                    title: tr(Text::InputErrorTitle).into(),
                     text: format!("{e}"),
                 });
             }
@@ -94,8 +101,8 @@ fn main() {
 
     let startup_warning = config_error.map(|e| {
         (
-            "Config file has an error".to_string(),
-            format!("Using the default settings. {e}"),
+            tr(Text::ConfigErrorTitle).to_string(),
+            trf(Text::ConfigErrorDefaults, &[("error", &e)]),
         )
     });
     if let Err(e) = ui::run(startup_warning) {

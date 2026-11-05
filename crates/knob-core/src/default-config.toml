@@ -14,6 +14,13 @@
 
 version = 1
 
+[ui]
+# "system" follows the Windows light / dark setting; or "light" / "dark".
+theme = "system"
+# "auto" follows the Windows display language; or a code such as "en".
+# Languages without a translation yet fall back to English.
+language = "auto"
+
 [timing]
 long_press_ms = 500
 double_click_ms = 250

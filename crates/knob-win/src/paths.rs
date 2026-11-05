@@ -1,4 +1,5 @@
-//! Where the config file and logs live.
+//! Where the config file and logs live. Shared by the daemon and the
+//! settings app.
 
 use std::path::PathBuf;
 

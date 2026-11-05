@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AK820 Knob Settings</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <!-- Text marked with data-i18n is filled in from ui/locales/. -->
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <img src="icon.png" alt="">
+        <div><strong data-i18n="app.name"></strong><small data-i18n="app.subtitle"></small></div>
+      </div>
+      <nav id="nav"></nav>
+      <div class="sidebar-foot" data-i18n="app.footer"></div>
+    </aside>
+
+    <div class="content">
+      <header class="topbar">
+        <div class="titles">
+          <h1 id="title"></h1>
+          <p id="subtitle"></p>
+        </div>
+        <div class="top-actions">
+          <span id="status" class="status" role="status"></span>
+          <button class="btn ghost" id="discard" data-cmd="discard" data-i18n="buttons.discard"></button>
+          <button class="btn primary" id="save" data-cmd="save" data-i18n="buttons.save" data-i18n-title="buttons.saveTitle"></button>
+        </div>
+      </header>
+      <div id="banners"></div>
+      <main id="main"></main>
+    </div>
+  </div>
+
+  <div id="modal-root"></div>
+  <div id="toast" class="toast" role="status"></div>
+
+  <script src="i18n.js"></script>
+  <!-- One line per language; see docs/translating.md. -->
+  <script src="locales/en.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

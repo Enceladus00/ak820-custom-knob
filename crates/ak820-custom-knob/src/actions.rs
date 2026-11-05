@@ -4,6 +4,7 @@ use knob_core::{Action, Dir, Gesture, HookKey, Output, accel_factor};
 use knob_win::audio::Audio;
 use knob_win::output;
 
+use crate::i18n::{Text, trf};
 use crate::ui::{self, UiEvent};
 
 pub struct Actions {
@@ -111,9 +112,13 @@ impl Actions {
         let Some(audio) = &self.audio else { return };
         match audio.change_app_volume(exe, delta) {
             Ok(Some(level)) => {
-                ui::notify(UiEvent::Osd(format!("{app}  {}%", (level * 100.0).round())))
+                let percent = (level * 100.0).round().to_string();
+                ui::notify(UiEvent::Osd(trf(
+                    Text::OsdAppVolume,
+                    &[("app", app), ("percent", &percent)],
+                )))
             }
-            Ok(None) => ui::notify(UiEvent::Osd(format!("{app}: no sound playing"))),
+            Ok(None) => ui::notify(UiEvent::Osd(trf(Text::OsdNoSound, &[("app", app)]))),
             Err(e) => log::warn!("app volume for {exe}: {e}"),
         }
     }

@@ -1,0 +1,23 @@
+[package]
+name = "knob-settings"
+description = "Settings app for ak820-custom-knob (Tauri)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+knob-core = { path = "../knob-core" }
+knob-win = { path = "../knob-win" }
+serde = { version = "1.0.229", features = ["derive"] }
+tauri = "2.12.5"
+toml = "1.2.0"
+
+[build-dependencies]
+tauri-build = "2.7.4"
+
+[features]
+# Serve the embedded `ui/` folder. The Tauri CLI normally enables this; we
+# build with plain cargo, so it is on by default.
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

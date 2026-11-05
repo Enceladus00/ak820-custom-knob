@@ -10,6 +10,7 @@ pub mod audio;
 pub mod clock;
 pub mod input;
 pub mod output;
+pub mod paths;
 pub mod process;
 
 /// Marks input we inject ourselves (`dwExtraInfo`), so our hook lets it pass.

@@ -25,11 +25,44 @@ pub enum ConfigError {
 pub struct Config {
     pub version: u32,
     #[serde(default)]
+    pub ui: UiPrefs,
+    #[serde(default)]
     pub timing: Timing,
     #[serde(rename = "mode")]
     pub modes: Vec<Mode>,
     #[serde(rename = "profile")]
     pub profiles: Vec<Profile>,
+}
+
+/// Appearance and language of the program's own windows and popups.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields, default)]
+pub struct UiPrefs {
+    pub theme: Theme,
+    /// `"auto"` follows the Windows display language; otherwise a language
+    /// code such as `"en"`. Languages without a translation fall back to English.
+    pub language: String,
+}
+
+impl Default for UiPrefs {
+    fn default() -> Self {
+        Self {
+            theme: Theme::System,
+            language: AUTO_LANGUAGE.into(),
+        }
+    }
+}
+
+pub const AUTO_LANGUAGE: &str = "auto";
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Theme {
+    /// Follow the Windows light / dark setting.
+    #[default]
+    System,
+    Light,
+    Dark,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -365,6 +398,17 @@ impl Config {
                 self.version
             ));
         }
+        let language = &self.ui.language;
+        let looks_like_code = language.len() <= 16
+            && !language.is_empty()
+            && language
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_');
+        if !looks_like_code {
+            errors.push(format!(
+                "language must be \"{AUTO_LANGUAGE}\" or a language code like \"en\", found \"{language}\""
+            ));
+        }
         if self.modes.is_empty() {
             errors.push("at least one [[mode]] is needed".into());
         }
@@ -479,6 +523,32 @@ mod tests {
         assert!(matches!(
             Config::from_toml(&text),
             Err(ConfigError::Parse(_))
+        ));
+    }
+
+    #[test]
+    fn ui_section_is_optional_and_checked() {
+        // Files written before [ui] existed still load, with defaults.
+        let old = DEFAULT_CONFIG
+            .replace("[ui]", "")
+            .replace("theme = \"system\"", "")
+            .replace("language = \"auto\"", "");
+        let config = Config::from_toml(&old).unwrap();
+        assert_eq!(config.ui, UiPrefs::default());
+
+        let dark = DEFAULT_CONFIG
+            .replace("theme = \"system\"", "theme = \"dark\"")
+            .replace("\"auto\"", "\"tr\"");
+        let config = Config::from_toml(&dark).unwrap();
+        assert_eq!(
+            (config.ui.theme, config.ui.language.as_str()),
+            (Theme::Dark, "tr")
+        );
+
+        let bad = DEFAULT_CONFIG.replace("language = \"auto\"", "language = \"not a code!\"");
+        assert!(matches!(
+            Config::from_toml(&bad),
+            Err(ConfigError::Invalid(_))
         ));
     }
 

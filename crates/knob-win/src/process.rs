@@ -1,11 +1,54 @@
 //! Finding out which app a window or process belongs to.
 
-use windows::Win32::Foundation::{CloseHandle, HWND};
+use windows::Win32::Foundation::{CloseHandle, HWND, LPARAM};
 use windows::Win32::System::Threading::{
     OpenProcess, PROCESS_NAME_WIN32, PROCESS_QUERY_LIMITED_INFORMATION, QueryFullProcessImageNameW,
 };
-use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
-use windows::core::PWSTR;
+use windows::Win32::UI::WindowsAndMessaging::{
+    EnumWindows, GWL_EXSTYLE, GetForegroundWindow, GetWindowLongW, GetWindowTextLengthW,
+    GetWindowTextW, GetWindowThreadProcessId, IsWindowVisible, WS_EX_TOOLWINDOW,
+};
+use windows::core::{BOOL, PWSTR};
+
+/// An app with a visible window.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RunningApp {
+    pub exe: String,
+    pub title: String,
+}
+
+/// Apps that currently have a visible, titled window, one entry per exe,
+/// sorted by exe name.
+pub fn running_apps() -> Vec<RunningApp> {
+    unsafe extern "system" fn collect(hwnd: HWND, lparam: LPARAM) -> BOOL {
+        unsafe {
+            let apps = &mut *(lparam.0 as *mut Vec<RunningApp>);
+            let tool_window = GetWindowLongW(hwnd, GWL_EXSTYLE) as u32 & WS_EX_TOOLWINDOW.0 != 0;
+            if IsWindowVisible(hwnd).as_bool() && !tool_window && GetWindowTextLengthW(hwnd) > 0 {
+                let mut buf = [0u16; 256];
+                let len = GetWindowTextW(hwnd, &mut buf).max(0) as usize;
+                if let Some((_, exe)) = window_process(hwnd) {
+                    apps.push(RunningApp {
+                        exe,
+                        title: String::from_utf16_lossy(&buf[..len]),
+                    });
+                }
+            }
+            BOOL(1)
+        }
+    }
+
+    let mut apps: Vec<RunningApp> = Vec::new();
+    unsafe {
+        let _ = EnumWindows(
+            Some(collect),
+            LPARAM(&mut apps as *mut Vec<RunningApp> as isize),
+        );
+    }
+    apps.sort_by_key(|a| a.exe.to_lowercase());
+    apps.dedup_by(|a, b| a.exe.eq_ignore_ascii_case(&b.exe));
+    apps
+}
 
 /// Exe file name of a process, e.g. `"Spotify.exe"`.
 pub fn exe_name(pid: u32) -> Option<String> {

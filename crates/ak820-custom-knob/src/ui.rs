@@ -23,6 +23,7 @@ use windows::Win32::UI::WindowsAndMessaging::{
 };
 use windows::core::{HSTRING, PCWSTR, Result, w};
 
+use crate::i18n::{Text, tr, trf};
 use crate::{osd, paths};
 
 const WM_TRAY: u32 = WM_APP + 1;
@@ -32,6 +33,7 @@ const ID_MODE: usize = 1;
 const ID_PAUSE: usize = 2;
 const ID_CONFIG: usize = 3;
 const ID_LOGS: usize = 4;
+const ID_SETTINGS: usize = 6;
 const ID_QUIT: usize = 5;
 
 pub enum UiEvent {
@@ -41,6 +43,8 @@ pub enum UiEvent {
     Osd(String),
     /// Show a tray notification.
     Warning { title: String, text: String },
+    /// The language changed: refresh texts that stay on screen.
+    LanguageChanged,
 }
 
 static HWND_VALUE: AtomicIsize = AtomicIsize::new(0);
@@ -163,11 +167,11 @@ fn tooltip() -> String {
             .unwrap_or_default()
     });
     if knob_win::input::is_paused() {
-        "AK820 knob - paused".into()
+        tr(Text::TooltipPaused).into()
     } else if mode.is_empty() {
-        "AK820 knob".into()
+        tr(Text::Tooltip).into()
     } else {
-        format!("AK820 knob - {mode}")
+        trf(Text::TooltipMode, &[("mode", &mode)])
     }
 }
 
@@ -225,7 +229,26 @@ fn drain_events() {
             }
             UiEvent::Osd(text) => osd::show(&text),
             UiEvent::Warning { title, text } => balloon(&title, &text),
+            UiEvent::LanguageChanged => update_tooltip(),
         }
+    }
+}
+
+/// Opens the settings app (installed next to this exe), or the config file
+/// itself when the settings app isn't there.
+fn open_settings() {
+    let settings = std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(|dir| dir.join("knob-settings.exe")))
+        .filter(|path| path.exists());
+    match settings {
+        Some(path) => {
+            if let Err(e) = std::process::Command::new(&path).spawn() {
+                log::warn!("cannot start {}: {e}", path.display());
+                open(&paths::config_file());
+            }
+        }
+        None => open(&paths::config_file()),
     }
 }
 
@@ -265,10 +288,11 @@ fn show_menu(hwnd: HWND) {
     unsafe {
         let Ok(menu) = CreatePopupMenu() else { return };
         let mode_label = HSTRING::from(if mode.is_empty() {
-            "No mode active".to_string()
+            tr(Text::MenuNoMode).to_string()
         } else {
-            format!("Mode: {mode}")
+            trf(Text::MenuMode, &[("mode", &mode)])
         });
+        let item = |text: Text| HSTRING::from(tr(text));
         let _ = AppendMenuW(menu, MF_STRING | MF_GRAYED, ID_MODE, &mode_label);
         let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
         let pause_flags = if paused {
@@ -276,16 +300,12 @@ fn show_menu(hwnd: HWND) {
         } else {
             MF_STRING
         };
-        let _ = AppendMenuW(
-            menu,
-            pause_flags,
-            ID_PAUSE,
-            w!("Paused (knob works as normal)"),
-        );
-        let _ = AppendMenuW(menu, MF_STRING, ID_CONFIG, w!("Edit configuration"));
-        let _ = AppendMenuW(menu, MF_STRING, ID_LOGS, w!("Open log folder"));
+        let _ = AppendMenuW(menu, pause_flags, ID_PAUSE, &item(Text::MenuPaused));
+        let _ = AppendMenuW(menu, MF_STRING, ID_SETTINGS, &item(Text::MenuSettings));
+        let _ = AppendMenuW(menu, MF_STRING, ID_CONFIG, &item(Text::MenuEditConfig));
+        let _ = AppendMenuW(menu, MF_STRING, ID_LOGS, &item(Text::MenuLogs));
         let _ = AppendMenuW(menu, MF_SEPARATOR, 0, PCWSTR::null());
-        let _ = AppendMenuW(menu, MF_STRING, ID_QUIT, w!("Quit"));
+        let _ = AppendMenuW(menu, MF_STRING, ID_QUIT, &item(Text::MenuQuit));
 
         let mut point = POINT::default();
         let _ = GetCursorPos(&mut point);
@@ -307,13 +327,14 @@ fn show_menu(hwnd: HWND) {
             ID_PAUSE => {
                 knob_win::input::set_paused(!paused);
                 log::info!("{}", if paused { "resumed" } else { "paused" });
-                osd::show(if paused {
-                    "Knob: custom functions on"
+                osd::show(tr(if paused {
+                    Text::OsdResumed
                 } else {
-                    "Knob: paused"
-                });
+                    Text::OsdPaused
+                }));
                 update_tooltip();
             }
+            ID_SETTINGS => open_settings(),
             ID_CONFIG => open(&paths::config_file()),
             ID_LOGS => open(&paths::log_dir()),
             ID_QUIT => {
@@ -333,7 +354,7 @@ extern "system" fn wndproc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM)
             WM_TRAY => {
                 match (lparam.0 as u32) & 0xFFFF {
                     WM_RBUTTONUP | WM_CONTEXTMENU => show_menu(hwnd),
-                    WM_LBUTTONDBLCLK => open(&paths::config_file()),
+                    WM_LBUTTONDBLCLK => open_settings(),
                     _ => {}
                 }
                 LRESULT(0)

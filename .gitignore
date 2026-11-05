@@ -1,2 +1,4 @@
 /target
 /probe-logs
+/.claude/launch.json
+/crates/knob-settings/gen
