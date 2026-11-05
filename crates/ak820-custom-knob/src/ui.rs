@@ -179,7 +179,13 @@ fn add_icon(hwnd: HWND) {
     let mut data = icon_data(hwnd);
     data.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
     data.uCallbackMessage = WM_TRAY;
-    data.hIcon = unsafe { LoadIconW(None, IDI_APPLICATION) }.unwrap_or_default();
+    // The knob icon embedded by build.rs (resource 1), else the generic one.
+    data.hIcon = unsafe {
+        let module = GetModuleHandleW(None).unwrap_or_default();
+        LoadIconW(Some(module.into()), PCWSTR(1 as _))
+            .or_else(|_| LoadIconW(None, IDI_APPLICATION))
+    }
+    .unwrap_or_default();
     copy_wide(&mut data.szTip, &tooltip());
     unsafe {
         let _ = Shell_NotifyIconW(NIM_ADD, &data);
