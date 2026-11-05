@@ -19,7 +19,7 @@ dependencies = [
 
 [[package]]
 name = "ak820-custom-knob"
-version = "0.0.1"
+version = "1.0.0"
 dependencies = [
  "knob-core",
  "knob-win",
@@ -1665,7 +1665,7 @@ dependencies = [
 
 [[package]]
 name = "knob-core"
-version = "0.0.1"
+version = "1.0.0"
 dependencies = [
  "serde",
  "thiserror 2.0.21",
@@ -1674,7 +1674,7 @@ dependencies = [
 
 [[package]]
 name = "knob-probe"
-version = "0.0.1"
+version = "1.0.0"
 dependencies = [
  "hidapi",
  "windows",
@@ -1682,7 +1682,7 @@ dependencies = [
 
 [[package]]
 name = "knob-settings"
-version = "0.0.1"
+version = "1.0.0"
 dependencies = [
  "knob-core",
  "knob-win",
@@ -1694,7 +1694,7 @@ dependencies = [
 
 [[package]]
 name = "knob-win"
-version = "0.0.1"
+version = "1.0.0"
 dependencies = [
  "knob-core",
  "log",
