@@ -19,5 +19,5 @@ pub mod signal;
 pub use config::{Action, Config, ConfigError, Mode, MouseButton, Profile, Theme, UiPrefs};
 pub use engine::{Engine, Output};
 pub use gesture::{Gesture, GestureKind, accel_factor};
-pub use keys::KeyCombo;
+pub use keys::{Key, KeyCombo};
 pub use signal::{Dir, HookKey, Input, MS, Micros, Modifiers};

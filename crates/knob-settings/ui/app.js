@@ -723,36 +723,68 @@ document.addEventListener('click', (e) => {
   commands[el.dataset.cmd]?.(el);
 });
 
-// Key-combination fields: focus one, then press the keys.
+// Key-combination fields: focus one, then press any key or combination.
+//
+// Keys are recorded in the same text form as config.toml (see keys.rs):
+// named keys (Left, F5, A, Num5…), characters ("." "ç" "*"), or VK_XX for
+// anything else. Characters are recorded as typed, so they work on every
+// keyboard layout: the full stop is "." whether it sits next to the comma
+// (US) or below Ç (Turkish Q).
+
+// Keys whose position, not character, matters.
 const KEY_BY_CODE = {
-  Equal: 'Plus', Minus: 'Minus', Comma: 'Comma', Period: 'Period',
-  BracketLeft: 'LeftBracket', BracketRight: 'RightBracket', Space: 'Space',
+  Space: 'Space',
+  NumpadMultiply: 'NumMultiply', NumpadAdd: 'NumAdd', NumpadSubtract: 'NumSubtract',
+  NumpadDecimal: 'NumDecimal', NumpadDivide: 'NumDivide', NumpadEnter: 'Enter',
 };
 const KEY_BY_KEY = {
   ArrowLeft: 'Left', ArrowRight: 'Right', ArrowUp: 'Up', ArrowDown: 'Down',
   Enter: 'Enter', Tab: 'Tab', Escape: 'Esc', Backspace: 'Backspace', Delete: 'Delete', Insert: 'Insert',
   Home: 'Home', End: 'End', PageUp: 'PageUp', PageDown: 'PageDown', PrintScreen: 'PrintScreen',
+  Pause: 'Pause', CapsLock: 'CapsLock', NumLock: 'NumLock', ScrollLock: 'ScrollLock', ContextMenu: 'Menu',
   MediaTrackNext: 'MediaNext', MediaTrackPrevious: 'MediaPrev', MediaPlayPause: 'MediaPlayPause', MediaStop: 'MediaStop',
+  AudioVolumeUp: 'VolumeUp', AudioVolumeDown: 'VolumeDown', AudioVolumeMute: 'VolumeMute',
   BrowserBack: 'BrowserBack', BrowserForward: 'BrowserForward', BrowserRefresh: 'BrowserRefresh',
+  BrowserStop: 'BrowserStop', BrowserSearch: 'BrowserSearch', BrowserFavorites: 'BrowserFavorites', BrowserHome: 'BrowserHome',
+  LaunchMail: 'LaunchMail', LaunchMediaPlayer: 'LaunchMedia', LaunchApplication1: 'LaunchApp1', LaunchApplication2: 'LaunchApp2',
 };
+const MODIFIER_KEYS = ['Control', 'Shift', 'Alt', 'AltGraph', 'Meta', 'OS'];
 
-function keyName(e) {
-  if (['Control', 'Shift', 'Alt', 'Meta', 'OS'].includes(e.key)) return null;
+/** { key, isChar } for a keydown, or null for a bare modifier. */
+function keyFromEvent(e) {
+  if (MODIFIER_KEYS.includes(e.key)) return null;
+  const altGr = e.getModifierState?.('AltGraph');
   const letter = /^Key([A-Z])$/.exec(e.code);
-  if (letter) return letter[1];
   const digit = /^Digit(\d)$/.exec(e.code);
-  if (digit) return digit[1];
-  if (/^F([1-9]|1\d|2[0-4])$/.test(e.key)) return e.key;
-  return KEY_BY_CODE[e.code] ?? KEY_BY_KEY[e.key] ?? null;
+  const numpad = /^Numpad(\d)$/.exec(e.code);
+  // Letters and digits by position (Ctrl+Z stays Ctrl+Z on every layout),
+  // unless AltGr turns them into another character (Turkish AltGr+Q = @).
+  if (letter && !altGr) return { key: letter[1], isChar: false };
+  if (digit && !altGr) return { key: digit[1], isChar: false };
+  if (numpad) return { key: `Num${numpad[1]}`, isChar: false };
+  if (/^F([1-9]|1\d|2[0-4])$/.test(e.key)) return { key: e.key, isChar: false };
+  const named = KEY_BY_CODE[e.code] ?? KEY_BY_KEY[e.key];
+  if (named) return { key: named, isChar: false };
+  // Any other key that types one character: . , ; ' ç ö * + …
+  if ([...e.key].length === 1) return { key: e.key, isChar: true };
+  // Anything else (dead keys, unusual keys): its raw virtual-key code.
+  if (e.keyCode > 0 && e.keyCode < 0xff) {
+    return { key: `VK_${e.keyCode.toString(16).toUpperCase().padStart(2, '0')}`, isChar: false };
+  }
+  return null;
 }
 
 function comboFromEvent(e) {
-  const key = keyName(e);
-  if (!key) return null;
+  const pressed = keyFromEvent(e);
+  if (!pressed) return null;
+  const { key, isChar } = pressed;
+  // A character already says which Shift / AltGr state typed it (Shift+. is
+  // ":" on some layouts), so those aren't recorded separately.
+  const altGr = isChar && e.getModifierState?.('AltGraph');
   const mods = [];
-  if (e.ctrlKey) mods.push('Ctrl');
-  if (e.shiftKey) mods.push('Shift');
-  if (e.altKey) mods.push('Alt');
+  if (e.ctrlKey && !altGr) mods.push('Ctrl');
+  if (e.shiftKey && !isChar) mods.push('Shift');
+  if (e.altKey && !altGr) mods.push('Alt');
   if (e.metaKey) mods.push('Win');
   return [...mods, key].join('+');
 }

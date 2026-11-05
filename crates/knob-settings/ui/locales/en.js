@@ -87,7 +87,7 @@ registerLocale('en', 'English', {
     clockwise: 'Clockwise',
     counterClockwise: 'Counter-clockwise',
     keys: 'Keys',
-    keycapTitle: 'Click, then press the keys',
+    keycapTitle: 'Click here, then press any key or key combination',
     specialKey: 'Special key…',
     mouse: { left: 'Left button', middle: 'Middle button', right: 'Right button' },
   },
