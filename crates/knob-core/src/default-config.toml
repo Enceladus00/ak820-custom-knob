@@ -1,0 +1,58 @@
+# ak820-custom-knob configuration
+#
+# Saved changes are picked up automatically. If the file has an error, the
+# last working configuration stays active.
+#
+# Gestures:   rotate, click, double_click, long_press
+# Layers:     ctrl, shift, alt, win  (used while that modifier is held;
+#             a gesture missing from a layer falls back to the mode itself)
+# Actions:    volume, app_volume, mute, scroll, zoom, keys, mouse_click,
+#             cycle_mode, passthrough (stock knob behaviour), none
+#
+# Double-click makes every single click wait ~250 ms to see whether a second
+# one follows, but only in modes that bind double_click.
+
+version = 1
+
+[timing]
+long_press_ms = 500
+double_click_ms = 250
+
+# ---------------------------------------------------------------- modes
+
+[[mode]]
+id = "volume"
+name = "Volume"
+icon = "volume"
+rotate = { action = "volume", step = 2 }
+click = { action = "mute" }
+long_press = { action = "cycle_mode" }
+ctrl = { rotate = { action = "app_volume", step = 5 } }
+
+[[mode]]
+id = "scroll"
+name = "Scroll"
+icon = "scroll"
+rotate = { action = "scroll", lines = 1 }
+click = { action = "mouse_click", button = "middle" }
+long_press = { action = "cycle_mode" }
+shift = { rotate = { action = "scroll", lines = 1, horizontal = true } }
+ctrl = { rotate = { action = "zoom" } }
+
+[[mode]]
+id = "media"
+name = "Media"
+icon = "music"
+rotate = { action = "keys", cw = "MediaNext", ccw = "MediaPrev" }
+click = { action = "keys", keys = "MediaPlayPause" }
+long_press = { action = "cycle_mode" }
+ctrl = { rotate = { action = "volume", step = 2 } }
+
+# ---------------------------------------------------------------- profiles
+# The first profile whose `match` fits the foreground app wins.
+# `modes` are cycled by long press.
+
+[[profile]]
+name = "Default"
+match = { exe = "*" }
+modes = ["volume", "scroll", "media"]

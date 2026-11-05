@@ -1,0 +1,12 @@
+[package]
+name = "knob-core"
+description = "Platform-independent knob logic: classification, gestures, config and mode resolution"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+serde = { version = "1.0.229", features = ["derive"] }
+thiserror = "2.0.21"
+toml = "1.2.0"

@@ -1,0 +1,452 @@
+# AK820 MAX on the 2.4 GHz dongle, recorded with knob-probe on 2026-11-04.
+# Only step markers, Raw Input HID reports and hook events are kept.
+[ 20182.041] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 20182.507] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 20185.796] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 20186.132] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.6 ms
+[ 21155.512] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 21155.905] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 21159.256] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 21159.630] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.7 ms
+[ 21814.652] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 21814.916] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 21818.534] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 21819.133] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.2 ms
+[ 22312.282] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 22312.701] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 22316.851] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 22317.142] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.4 ms
+[ 22981.416] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 22981.831] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 22985.093] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 22985.384] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.6 ms
+==================== STEP 1/11: Turn the knob CLOCKWISE slowly, 5 clicks.
+[ 27680.491] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 27680.684] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 27684.995] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 27685.466] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.8 ms
+[ 28459.993] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 28460.333] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 28463.943] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 28464.343] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.0 ms
+[ 28571.162] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 28571.555] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 28574.990] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 28575.398] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.8 ms
+[ 29967.538] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 29967.933] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 29971.371] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 29971.783] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.9 ms
+[ 30811.997] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 30812.304] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 30816.039] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 30816.438] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.1 ms
+==================== STEP 2/11: Turn the knob COUNTER-CLOCKWISE slowly, 5 clicks.
+[ 33261.344] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 EA 00]  ~ consumer VOLUME_DOWN?
+[ 33261.600] HOOK    down vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 33265.514] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 33265.643] HOOK    up   vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.0 ms
+[ 34613.067] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 EA 00]  ~ consumer VOLUME_DOWN?
+[ 34613.350] HOOK    down vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 34617.720] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 34617.911] HOOK    up   vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.6 ms
+[ 35494.682] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 EA 00]  ~ consumer VOLUME_DOWN?
+[ 35495.002] HOOK    down vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 35498.962] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 35499.226] HOOK    up   vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.2 ms
+[ 36387.153] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 EA 00]  ~ consumer VOLUME_DOWN?
+[ 36387.428] HOOK    down vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 36391.418] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 36391.609] HOOK    up   vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.2 ms
+[ 37105.781] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 EA 00]  ~ consumer VOLUME_DOWN?
+[ 37106.161] HOOK    down vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 37110.245] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 37110.786] HOOK    up   vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.6 ms
+==================== STEP 3/11: Spin the knob CLOCKWISE FAST, one quick spin.
+[ 41881.064] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 41881.446] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 41884.762] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 41885.051] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.6 ms
+[ 41898.832] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 41899.180] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 41902.840] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 41903.105] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.9 ms
+[ 41912.984] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 41913.159] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 41916.989] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 41917.109] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.0 ms
+[ 41926.968] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 41927.238] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 41931.590] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 41931.986] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.7 ms
+[ 41964.718] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 41965.048] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 41968.303] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 41968.469] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.4 ms
+[ 41980.459] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 41980.616] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 41984.432] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 41984.585] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.0 ms
+[ 41995.319] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 41995.614] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 41999.669] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 41999.836] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.2 ms
+[ 42008.580] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42008.772] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42013.247] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42013.517] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.7 ms
+[ 42024.192] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42024.459] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42027.803] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42028.039] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.6 ms
+[ 42040.224] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42040.422] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42043.195] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42043.366] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 2.9 ms
+[ 42054.372] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42054.628] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42058.214] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42058.358] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.7 ms
+[ 42071.394] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42071.634] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42075.461] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42075.634] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.0 ms
+[ 42096.104] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42096.308] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42100.543] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42100.785] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.5 ms
+[ 42122.211] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42122.464] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42126.196] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42126.390] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.9 ms
+[ 42139.351] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42139.546] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42144.178] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42144.362] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.8 ms
+[ 42152.852] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42153.147] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42156.169] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42156.482] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.3 ms
+[ 42166.638] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42166.959] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42171.189] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42171.351] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.4 ms
+[ 42182.560] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42182.929] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42186.190] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42186.329] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.4 ms
+[ 42209.256] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42209.586] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42213.445] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42213.605] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.0 ms
+[ 42227.199] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42227.269] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42231.231] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42231.452] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.2 ms
+[ 42240.727] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42240.916] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42245.969] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42246.233] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 5.3 ms
+[ 42251.217] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42251.457] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42255.957] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42256.154] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.7 ms
+[ 42263.133] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42263.350] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42267.149] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42267.363] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.0 ms
+[ 42272.107] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42272.320] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42276.101] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42276.317] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.0 ms
+[ 42280.519] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42280.745] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42285.215] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42285.398] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.7 ms
+[ 42289.262] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42289.456] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42293.202] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42293.400] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.9 ms
+[ 42298.614] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42298.843] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42303.458] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42303.700] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.9 ms
+[ 42308.129] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42308.321] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42312.223] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42312.441] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.1 ms
+[ 42318.317] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42318.573] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42322.343] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42322.539] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.0 ms
+[ 42332.092] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42332.304] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42336.432] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42336.608] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.3 ms
+[ 42350.787] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42350.990] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42354.817] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42355.034] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.0 ms
+[ 42383.996] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42384.245] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42388.236] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42388.620] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.4 ms
+[ 42404.229] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42404.454] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42408.176] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42408.336] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.9 ms
+[ 42420.848] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42421.099] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42425.239] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42425.645] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.5 ms
+[ 42435.358] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42435.586] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42439.307] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42439.448] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.9 ms
+[ 42450.509] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42450.742] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42454.443] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42454.684] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.9 ms
+[ 42466.600] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42466.798] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42470.954] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42471.102] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.3 ms
+[ 42484.989] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42485.343] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42488.867] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42489.017] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.7 ms
+[ 42501.110] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42501.412] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42504.815] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42505.002] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.6 ms
+[ 42516.171] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42516.622] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42519.973] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42520.232] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.6 ms
+[ 42532.171] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42532.626] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42536.053] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42536.202] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.6 ms
+[ 42556.121] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42556.385] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42560.335] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42560.547] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.2 ms
+[ 42670.326] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42670.721] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42674.773] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42675.071] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.3 ms
+[ 42732.709] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42733.449] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42737.172] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42737.388] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.9 ms
+[ 42763.670] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42763.901] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42767.134] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42767.349] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.4 ms
+[ 42822.296] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 42822.603] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 42826.611] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 42826.841] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.2 ms
+==================== STEP 4/11: Press (click) the knob 3 times, with pauses.
+[ 45660.619] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E2 00]  ~ consumer MUTE?
+[ 45660.929] HOOK    down vk=0xAD VOLUME_MUTE    sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 45831.709] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 45831.954] HOOK    up   vk=0xAD VOLUME_MUTE    sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 171.0 ms
+[ 46777.004] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E2 00]  ~ consumer MUTE?
+[ 46777.350] HOOK    down vk=0xAD VOLUME_MUTE    sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 46935.057] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 46935.422] HOOK    up   vk=0xAD VOLUME_MUTE    sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 158.1 ms
+[ 47825.971] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E2 00]  ~ consumer MUTE?
+[ 47826.281] HOOK    down vk=0xAD VOLUME_MUTE    sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 47960.305] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 47960.764] HOOK    up   vk=0xAD VOLUME_MUTE    sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 134.5 ms
+==================== STEP 5/11: Press Fn+F3 3 times (the key combo that also raises volume).
+[ 51009.651] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 51009.972] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 51098.702] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 51099.115] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 89.1 ms
+[ 51767.132] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 51767.490] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 51843.980] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 51844.257] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 76.8 ms
+[ 52422.429] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 52422.742] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 52509.645] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 52510.095] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 87.4 ms
+==================== STEP 6/11: Press Fn+F2 3 times (the key combo that also lowers volume).
+[ 54589.123] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 EA 00]  ~ consumer VOLUME_DOWN?
+[ 54589.439] HOOK    down vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 54680.061] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 54680.309] HOOK    up   vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 90.9 ms
+[ 55358.593] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 EA 00]  ~ consumer VOLUME_DOWN?
+[ 55358.914] HOOK    down vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 55471.202] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 55471.526] HOOK    up   vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 112.6 ms
+[ 56047.740] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 EA 00]  ~ consumer VOLUME_DOWN?
+[ 56048.051] HOOK    down vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 56152.837] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 56153.155] HOOK    up   vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 105.1 ms
+==================== STEP 7/11: Press the Fn combo that mutes (often Fn+F1) 3 times. No such combo? Just skip.
+[ 59079.290] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E2 00]  ~ consumer MUTE?
+[ 59079.633] HOOK    down vk=0xAD VOLUME_MUTE    sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 59185.760] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 59186.047] HOOK    up   vk=0xAD VOLUME_MUTE    sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 106.4 ms
+[ 59856.568] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E2 00]  ~ consumer MUTE?
+[ 59856.873] HOOK    down vk=0xAD VOLUME_MUTE    sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 59958.086] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 59958.399] HOOK    up   vk=0xAD VOLUME_MUTE    sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 101.5 ms
+[ 60651.574] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E2 00]  ~ consumer MUTE?
+[ 60651.884] HOOK    down vk=0xAD VOLUME_MUTE    sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 60753.471] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 60753.828] HOOK    up   vk=0xAD VOLUME_MUTE    sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 101.9 ms
+==================== STEP 8/11: HOLD Fn and turn the knob clockwise 3 clicks, then counter-clockwise 3 clicks.
+[ 68661.540] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 68661.931] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 68666.016] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 68666.268] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.3 ms
+[ 69584.015] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 69584.443] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 69588.331] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 69588.691] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.2 ms
+[ 70330.554] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 70330.708] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 70334.337] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 70334.461] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.8 ms
+[ 71770.678] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 EA 00]  ~ consumer VOLUME_DOWN?
+[ 71771.068] HOOK    down vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 71774.541] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 71774.938] HOOK    up   vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 3.9 ms
+[ 72564.683] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 EA 00]  ~ consumer VOLUME_DOWN?
+[ 72564.935] HOOK    down vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 72569.309] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 72569.554] HOOK    up   vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.6 ms
+[ 73393.950] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 EA 00]  ~ consumer VOLUME_DOWN?
+[ 73394.125] HOOK    down vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 73398.204] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 73398.479] HOOK    up   vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.4 ms
+==================== STEP 9/11: HOLD Fn and press the knob once.
+[ 78639.876] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E2 00]  ~ consumer MUTE?
+[ 78640.263] HOOK    down vk=0xAD VOLUME_MUTE    sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 78820.182] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 78820.495] HOOK    up   vk=0xAD VOLUME_MUTE    sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 180.2 ms
+==================== STEP 10/11: HOLD Ctrl and turn the knob clockwise 3 clicks.
+[ 83026.073] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0
+[ 83534.654] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 83566.823] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 83597.792] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 83629.116] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 83659.859] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 83691.151] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 83738.199] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 83769.235] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 83800.799] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 83831.992] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 83863.128] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 83893.944] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 83925.009] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 83955.462] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84002.927] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84034.097] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84065.040] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84095.756] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84127.017] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84157.971] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84189.415] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84220.279] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84266.861] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84274.267] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 84274.636] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 84279.250] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 84279.879] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 5.2 ms
+[ 84298.792] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84331.108] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84362.763] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84393.063] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84424.825] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84455.451] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84486.689] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84517.491] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84564.217] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84594.418] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84626.230] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84658.067] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84689.168] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84719.772] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84751.265] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84782.877] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84814.842] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84820.186] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 84820.516] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 84824.572] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 84824.995] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.5 ms
+[ 84861.444] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84892.219] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84922.748] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84954.614] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 84986.526] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 85016.170] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 85047.076] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 85078.389] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 85124.889] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 85156.365] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 85187.315] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 85219.130] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 85231.989] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 85232.296] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x11[EXT,INJECTED] extra=0x0
+[ 85236.675] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 85237.142] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0x91[EXT,INJECTED,UP] extra=0x0  held 4.8 ms
+[ 85250.905] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 85281.761] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 85312.565] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 85344.081] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 85376.075] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 85407.166] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 85452.772] HOOK    down vk=0xA2 LCTRL          sc=0x001D flags=0x00 extra=0x0  (repeat)
+[ 85466.856] HOOK    up   vk=0xA2 LCTRL          sc=0x001D flags=0x80[UP] extra=0x0  held 14.1 ms
+==================== STEP 11/11: Free play: try anything else you are curious about (other Fn combos, long knob press...).
+[ 88346.233] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0
+[ 88803.527] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 EA 00]  ~ consumer VOLUME_DOWN?
+[ 88803.930] HOOK    down vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0x31[EXT,INJECTED,ALT] extra=0x0
+[ 88807.234] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 88807.461] HOOK    up   vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0xB1[EXT,INJECTED,ALT,UP] extra=0x0  held 3.5 ms
+[ 88857.302] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0  (repeat)
+[ 88864.851] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 EA 00]  ~ consumer VOLUME_DOWN?
+[ 88865.548] HOOK    down vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0x31[EXT,INJECTED,ALT] extra=0x0
+[ 88868.675] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 88868.979] HOOK    up   vk=0xAE VOLUME_DOWN    sc=0x0000 flags=0xB1[EXT,INJECTED,ALT,UP] extra=0x0  held 3.4 ms
+[ 88886.846] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0  (repeat)
+[ 88918.443] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0  (repeat)
+[ 88948.782] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0  (repeat)
+[ 88980.483] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0  (repeat)
+[ 89011.997] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0  (repeat)
+[ 89044.402] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0  (repeat)
+[ 89090.678] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0  (repeat)
+[ 89122.690] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0  (repeat)
+[ 89153.095] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0  (repeat)
+[ 89184.348] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0  (repeat)
+[ 89201.680] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 89201.967] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x31[EXT,INJECTED,ALT] extra=0x0
+[ 89205.908] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 89206.156] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0xB1[EXT,INJECTED,ALT,UP] extra=0x0  held 4.2 ms
+[ 89215.835] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0  (repeat)
+[ 89232.970] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 89233.182] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x31[EXT,INJECTED,ALT] extra=0x0
+[ 89236.709] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 89236.819] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0xB1[EXT,INJECTED,ALT,UP] extra=0x0  held 3.6 ms
+[ 89246.233] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0  (repeat)
+[ 89277.678] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0  (repeat)
+[ 89304.920] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 E9 00]  ~ consumer VOLUME_UP?
+[ 89305.187] HOOK    down vk=0xAF VOLUME_UP      sc=0x0000 flags=0x31[EXT,INJECTED,ALT] extra=0x0
+[ 89309.426] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0  (repeat)
+[ 89311.242] HOOK    up   vk=0xAF VOLUME_UP      sc=0x0000 flags=0xB1[EXT,INJECTED,ALT,UP] extra=0x0  held 6.1 ms
+[ 89311.970] RAWHID  dev=VID_0C45&PID_FEFC&MI_01&COL03 size=3 bytes=[03 00 00]  ~ consumer (release)?
+[ 89341.163] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0  (repeat)
+[ 89387.694] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0  (repeat)
+[ 89418.446] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0  (repeat)
+[ 89449.964] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0  (repeat)
+[ 89481.475] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0  (repeat)
+[ 89512.358] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0  (repeat)
+[ 89544.704] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0  (repeat)
+[ 89575.040] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0  (repeat)
+[ 89606.834] HOOK    down vk=0xA4 LALT           sc=0x0038 flags=0x20[ALT] extra=0x0  (repeat)
+[ 89621.782] HOOK    up   vk=0xA4 LALT           sc=0x0038 flags=0x80[UP] extra=0x0  held 14.9 ms

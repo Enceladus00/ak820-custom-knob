@@ -1,0 +1,23 @@
+//! Platform-independent logic for the AK820 knob.
+//!
+//! Nothing here touches Windows: inputs come in as plain values with
+//! timestamps, outputs go out as plain values. That keeps the whole pipeline
+//! deterministic and testable against recorded probe logs.
+//!
+//! ```text
+//! Input ─► Classifier ─► GestureRecognizer ─► Engine (config, modes) ─► Output
+//! ```
+
+pub mod classify;
+pub mod config;
+pub mod engine;
+pub mod gesture;
+pub mod keys;
+pub mod resolver;
+pub mod signal;
+
+pub use config::{Action, Config, ConfigError, Mode, MouseButton, Profile};
+pub use engine::{Engine, Output};
+pub use gesture::{Gesture, GestureKind, accel_factor};
+pub use keys::KeyCombo;
+pub use signal::{Dir, HookKey, Input, MS, Micros, Modifiers};
