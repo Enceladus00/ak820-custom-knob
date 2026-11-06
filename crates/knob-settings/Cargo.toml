@@ -11,6 +11,7 @@ knob-core = { path = "../knob-core" }
 knob-win = { path = "../knob-win" }
 serde = { version = "1.0.229", features = ["derive"] }
 tauri = "2.12.5"
+tauri-plugin-single-instance = "2.5.5"
 toml = "1.2.0"
 
 [build-dependencies]

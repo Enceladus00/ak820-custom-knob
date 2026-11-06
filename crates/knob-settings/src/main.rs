@@ -10,6 +10,7 @@ use std::path::Path;
 use knob_core::Config;
 use knob_win::{autostart, paths};
 use serde::Serialize;
+use tauri::Manager;
 
 #[derive(Serialize)]
 struct Loaded {
@@ -157,6 +158,14 @@ fn set_autostart(enabled: bool) -> Result<Autostart, String> {
 
 fn main() {
     tauri::Builder::default()
+        // Opening Settings again (tray, Start menu) focuses the open window.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .invoke_handler(tauri::generate_handler![
             load_config,
             default_config,

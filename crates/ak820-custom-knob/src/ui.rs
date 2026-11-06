@@ -15,11 +15,12 @@ use windows::Win32::UI::Shell::{
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     AppendMenuW, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu, DestroyWindow,
-    DispatchMessageW, GetCursorPos, GetMessageW, IDI_APPLICATION, LoadIconW, MF_CHECKED, MF_GRAYED,
-    MF_SEPARATOR, MF_STRING, MSG, PostMessageW, PostQuitMessage, RegisterClassW,
-    RegisterWindowMessageW, SW_SHOWNORMAL, SetForegroundWindow, TPM_BOTTOMALIGN, TPM_RETURNCMD,
-    TPM_RIGHTBUTTON, TrackPopupMenu, TranslateMessage, WINDOW_EX_STYLE, WM_APP, WM_CONTEXTMENU,
-    WM_DESTROY, WM_LBUTTONDBLCLK, WM_NULL, WM_RBUTTONUP, WNDCLASSW, WS_OVERLAPPED,
+    DispatchMessageW, FindWindowW, GetCursorPos, GetMessageW, IDI_APPLICATION, IsIconic, LoadIconW,
+    MF_CHECKED, MF_GRAYED, MF_SEPARATOR, MF_STRING, MSG, PostMessageW, PostQuitMessage,
+    RegisterClassW, RegisterWindowMessageW, SW_RESTORE, SW_SHOWNORMAL, SetForegroundWindow,
+    ShowWindow, TPM_BOTTOMALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON, TrackPopupMenu, TranslateMessage,
+    WINDOW_EX_STYLE, WM_APP, WM_CONTEXTMENU, WM_DESTROY, WM_LBUTTONUP, WM_NULL, WM_RBUTTONUP,
+    WNDCLASSW, WS_OVERLAPPED,
 };
 use windows::core::{HSTRING, PCWSTR, Result, w};
 
@@ -240,9 +241,31 @@ fn drain_events() {
     }
 }
 
-/// Opens the settings app (installed next to this exe), or the config file
-/// itself when the settings app isn't there.
+/// Title of the settings window (tauri.conf.json).
+const SETTINGS_TITLE: PCWSTR = w!("AK820 Knob Settings");
+
+/// When Settings was last started, so a double click doesn't start it twice.
+static SETTINGS_STARTED: Mutex<Option<std::time::Instant>> = Mutex::new(None);
+
+/// Brings the settings window to the front when it is open. Opens the settings
+/// app (installed next to this exe) otherwise, or the config file itself when
+/// the settings app isn't there.
 fn open_settings() {
+    if let Ok(window) = unsafe { FindWindowW(None, SETTINGS_TITLE) } {
+        unsafe {
+            if IsIconic(window).as_bool() {
+                let _ = ShowWindow(window, SW_RESTORE);
+            }
+            let _ = SetForegroundWindow(window);
+        }
+        return;
+    }
+    if let Ok(mut started) = SETTINGS_STARTED.lock() {
+        if started.is_some_and(|t| t.elapsed() < std::time::Duration::from_secs(2)) {
+            return; // still starting up
+        }
+        *started = Some(std::time::Instant::now());
+    }
     let settings = std::env::current_exe()
         .ok()
         .and_then(|exe| exe.parent().map(|dir| dir.join("knob-settings.exe")))
@@ -373,7 +396,7 @@ extern "system" fn wndproc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM)
             WM_TRAY => {
                 match (lparam.0 as u32) & 0xFFFF {
                     WM_RBUTTONUP | WM_CONTEXTMENU => show_menu(hwnd),
-                    WM_LBUTTONDBLCLK => open_settings(),
+                    WM_LBUTTONUP => open_settings(),
                     _ => {}
                 }
                 LRESULT(0)

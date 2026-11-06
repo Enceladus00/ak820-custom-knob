@@ -61,7 +61,7 @@ fn en(text: Text) -> Option<&'static str> {
         MenuMode => "Mode: {mode}",
         MenuPaused => "Paused (knob works as normal)",
         MenuAutostart => "Start with Windows",
-        MenuSettings => "Settingsâ¦",
+        MenuSettings => "Settings…",
         MenuEditConfig => "Edit config file",
         MenuLogs => "Open log folder",
         MenuQuit => "Quit",
@@ -139,6 +139,24 @@ pub fn trf(text: Text, params: &[(&str, &str)]) -> String {
 mod tests {
     use super::*;
 
+    /// Text saved with the wrong encoding turns "…" into "â€¦", which shows
+    /// up as C1 control characters (U+0080–U+009F). Real text never has them.
+    #[test]
+    fn translation_files_are_valid_utf8_text() {
+        for (name, source) in [
+            ("i18n.rs", include_str!("i18n.rs")),
+            (
+                "locales/en.js",
+                include_str!("../../knob-settings/ui/locales/en.js"),
+            ),
+        ] {
+            assert!(
+                !source.chars().any(|c| ('\u{80}'..='\u{9F}').contains(&c)),
+                "{name} has garbled characters (double-encoded UTF-8)"
+            );
+        }
+    }
+
     #[test]
     fn english_and_placeholders() {
         set_language("en");
@@ -152,8 +170,8 @@ mod tests {
     #[test]
     fn unknown_languages_fall_back_to_english() {
         set_language("xx-YY");
-        assert_eq!(tr(Text::MenuSettings), "Settingsâ¦");
+        assert_eq!(tr(Text::MenuSettings), "Settings…");
         set_language("en-GB");
-        assert_eq!(tr(Text::MenuSettings), "Settingsâ¦");
+        assert_eq!(tr(Text::MenuSettings), "Settings…");
     }
 }
