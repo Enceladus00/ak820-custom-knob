@@ -65,6 +65,9 @@ fn main() {
         log::warn!("config has errors, using the built-in default: {e}");
     }
     i18n::set_language(&config.ui.language);
+    if let Ok(exe) = std::env::current_exe() {
+        knob_win::autostart::repair(&exe);
+    }
 
     let engine = engine_thread::start(config);
     let _ = ENGINE.set(engine.clone());

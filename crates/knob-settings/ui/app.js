@@ -73,6 +73,7 @@ const state = {
   page: 'modes',
   modeIndex: 0,
   layer: '',
+  autostart: null, // { available, enabled }; null until known
   picker: null, // index of the profile the app picker adds to
   apps: null,
   appFilter: '',
@@ -416,7 +417,15 @@ function generalPage() {
     languages.push(`<option value="${esc(ui.language)}" selected>${esc(ui.language)}</option>`);
   }
 
+  const auto = state.autostart;
   return `<section class="card">
+      <h2>${t('general.startup')}</h2>
+      <label class="setting-row">
+        <div><strong>${t('general.autostart')}</strong><small>${t(auto && !auto.available ? 'general.autostartMissing' : 'general.autostartHint')}</small></div>
+        <input type="checkbox" data-cmd="autostart" ${auto?.enabled ? 'checked' : ''} ${auto?.available ? '' : 'disabled'}>
+      </label>
+    </section>
+    <section class="card">
       <h2>${t('general.appearance')}</h2>
       <div class="setting-row">
         <div><strong>${t('general.theme')}</strong><small>${t('general.themeHint')}</small></div>
@@ -666,6 +675,15 @@ const changeCommands = {
     changed();
   },
   language: (el) => { state.config.ui.language = el.value; changed(); },
+  // Applies at once, like the tray menu item; not part of Save.
+  autostart: async (el) => {
+    try {
+      state.autostart = await invoke('set_autostart', { enabled: el.checked });
+    } catch (e) {
+      toast(t('toast.autostartFailed', { error: e }), true);
+    }
+    render();
+  },
 };
 
 // ---------------------------------------------------------------- events
@@ -824,6 +842,7 @@ async function init() {
     state.config = fromRust(loaded.config);
     state.path = loaded.path;
     state.loadError = loaded.error;
+    state.autostart = await invoke('get_autostart').catch(() => null);
     // A broken file counts as unsaved, so one Save replaces it with what is shown.
     state.savedJson = loaded.error ? '' : JSON.stringify(state.config);
     render();

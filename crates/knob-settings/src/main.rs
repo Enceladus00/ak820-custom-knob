@@ -8,7 +8,7 @@ use std::fs;
 use std::path::Path;
 
 use knob_core::Config;
-use knob_win::paths;
+use knob_win::{autostart, paths};
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -122,6 +122,39 @@ fn open_location(which: String) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+#[derive(Serialize)]
+struct Autostart {
+    /// False when the background program isn't next to this exe.
+    available: bool,
+    enabled: bool,
+}
+
+fn autostart_state() -> Autostart {
+    Autostart {
+        available: autostart::daemon_exe().is_some(),
+        enabled: autostart::is_enabled(),
+    }
+}
+
+/// Whether the knob program starts at sign-in. Not part of the config file:
+/// the registry entry is the setting, shared with the tray menu.
+#[tauri::command]
+fn get_autostart() -> Autostart {
+    autostart_state()
+}
+
+#[tauri::command]
+fn set_autostart(enabled: bool) -> Result<Autostart, String> {
+    let exe = autostart::daemon_exe().ok_or_else(|| {
+        format!(
+            "{} not found next to the Settings app",
+            autostart::DAEMON_EXE
+        )
+    })?;
+    autostart::set_enabled(enabled, &exe).map_err(|e| e.to_string())?;
+    Ok(autostart_state())
+}
+
 fn main() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
@@ -130,7 +163,9 @@ fn main() {
             validate_config,
             save_config,
             running_apps,
-            open_location
+            open_location,
+            get_autostart,
+            set_autostart
         ])
         .run(tauri::generate_context!())
         .expect("failed to start the settings window");

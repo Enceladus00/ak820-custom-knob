@@ -18,7 +18,7 @@ registerLocale('en', 'English', {
   },
 
   status: {
-    saving: 'Saving…',
+    saving: 'Savingâ¦',
     saved: 'Saved',
     unsaved: 'Unsaved changes',
     problems: { one: '{count} problem to fix', other: '{count} problems to fix' },
@@ -54,7 +54,7 @@ registerLocale('en', 'English', {
     alt: 'Alt',
     win: 'Win',
     hintNone: 'What the knob does in this mode.',
-    hint: 'What the knob does while you hold <kbd>{key}</kbd>. Anything left as “Same as without modifier” keeps the normal behaviour.',
+    hint: 'What the knob does while you hold <kbd>{key}</kbd>. Anything left as âSame as without modifierâ keeps the normal behaviour.',
   },
 
   actions: {
@@ -88,7 +88,7 @@ registerLocale('en', 'English', {
     counterClockwise: 'Counter-clockwise',
     keys: 'Keys',
     keycapTitle: 'Click here, then press any key or key combination',
-    specialKey: 'Special key…',
+    specialKey: 'Special keyâ¦',
     mouse: { left: 'Left button', middle: 'Middle button', right: 'Right button' },
   },
 
@@ -113,7 +113,7 @@ registerLocale('en', 'English', {
     usedIn: 'Used in {names}',
     unused: 'Not used by any app',
     empty: 'No modes yet. Create one to get started.',
-    confirmDelete: 'Delete the mode “{name}”? Apps that use it will lose it.',
+    confirmDelete: 'Delete the mode â{name}â? Apps that use it will lose it.',
   },
 
   apps: {
@@ -125,7 +125,7 @@ registerLocale('en', 'English', {
     noApps: 'No apps yet',
     noModes: 'No modes',
     addApp: 'Add app',
-    addMode: '+ Add mode…',
+    addMode: '+ Add modeâ¦',
     remember: 'Remember the last used mode for these apps',
     newProfile: 'New apps',
     addProfile: 'Add apps with their own modes',
@@ -136,26 +136,30 @@ registerLocale('en', 'English', {
     modeLater: 'Later',
     remove: 'Remove',
     delete: 'Delete',
-    confirmDelete: 'Delete “{name}”?',
+    confirmDelete: 'Delete â{name}â?',
     shadowing: 'Entries below this one are never used, because this one matches every app. Move it to the bottom.',
     noAppsWarning: 'Add at least one app, otherwise this entry is never used.',
     picker: {
       title: 'Add an app',
       hint: 'Pick an app that is open right now, or type its exe name (for example <code>Resolve.exe</code>).',
-      search: 'Search open apps…',
-      loading: 'Looking for open apps…',
+      search: 'Search open appsâ¦',
+      loading: 'Looking for open appsâ¦',
       none: 'No matching open app. You can type the exe name below.',
       manual: 'Name.exe',
     },
   },
 
   general: {
+    startup: 'Startup',
+    autostart: 'Start with Windows',
+    autostartHint: 'Starts the knob program when you sign in. Changes right away, no need to save.',
+    autostartMissing: 'Not available: the knob program (ak820-custom-knob.exe) isn’t in the same folder as Settings.',
     appearance: 'Appearance',
     theme: 'Theme',
     themeHint: 'Colours of this window.',
     themes: { system: 'Same as Windows', light: 'Light', dark: 'Dark' },
     language: 'Language',
-    languageHint: 'Used by Settings and by the knob’s tray menu and popups.',
+    languageHint: 'Used by Settings and by the knobâs tray menu and popups.',
     languageAuto: 'Same as Windows ({name})',
     timing: 'Timing',
     longPress: 'Long press',
@@ -176,5 +180,6 @@ registerLocale('en', 'English', {
   toast: {
     saved: 'Saved. The knob uses the new settings now.',
     saveFailed: 'Could not save: {error}',
+    autostartFailed: 'Could not change Start with Windows: {error}',
   },
 });

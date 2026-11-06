@@ -35,6 +35,7 @@ const ID_CONFIG: usize = 3;
 const ID_LOGS: usize = 4;
 const ID_SETTINGS: usize = 6;
 const ID_QUIT: usize = 5;
+const ID_AUTOSTART: usize = 7;
 
 pub enum UiEvent {
     /// The active mode changed. `announce` also shows it on screen.
@@ -182,8 +183,7 @@ fn add_icon(hwnd: HWND) {
     // The knob icon embedded by build.rs (resource 1), else the generic one.
     data.hIcon = unsafe {
         let module = GetModuleHandleW(None).unwrap_or_default();
-        LoadIconW(Some(module.into()), PCWSTR(1 as _))
-            .or_else(|_| LoadIconW(None, IDI_APPLICATION))
+        LoadIconW(Some(module.into()), PCWSTR(1 as _)).or_else(|_| LoadIconW(None, IDI_APPLICATION))
     }
     .unwrap_or_default();
     copy_wide(&mut data.szTip, &tooltip());
@@ -307,6 +307,18 @@ fn show_menu(hwnd: HWND) {
             MF_STRING
         };
         let _ = AppendMenuW(menu, pause_flags, ID_PAUSE, &item(Text::MenuPaused));
+        let autostart = knob_win::autostart::is_enabled();
+        let autostart_flags = if autostart {
+            MF_STRING | MF_CHECKED
+        } else {
+            MF_STRING
+        };
+        let _ = AppendMenuW(
+            menu,
+            autostart_flags,
+            ID_AUTOSTART,
+            &item(Text::MenuAutostart),
+        );
         let _ = AppendMenuW(menu, MF_STRING, ID_SETTINGS, &item(Text::MenuSettings));
         let _ = AppendMenuW(menu, MF_STRING, ID_CONFIG, &item(Text::MenuEditConfig));
         let _ = AppendMenuW(menu, MF_STRING, ID_LOGS, &item(Text::MenuLogs));
@@ -340,6 +352,7 @@ fn show_menu(hwnd: HWND) {
                 }));
                 update_tooltip();
             }
+            ID_AUTOSTART => toggle_autostart(),
             ID_SETTINGS => open_settings(),
             ID_CONFIG => open(&paths::config_file()),
             ID_LOGS => open(&paths::log_dir()),
@@ -380,6 +393,26 @@ extern "system" fn wndproc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM)
                 LRESULT(0)
             }
             _ => DefWindowProcW(hwnd, msg, wparam, lparam),
+        }
+    }
+}
+
+fn toggle_autostart() {
+    let enable = !knob_win::autostart::is_enabled();
+    let result =
+        std::env::current_exe().and_then(|exe| knob_win::autostart::set_enabled(enable, &exe));
+    match result {
+        Ok(()) => {
+            log::info!("autostart {}", if enable { "on" } else { "off" });
+            osd::show(tr(if enable {
+                Text::OsdAutostartOn
+            } else {
+                Text::OsdAutostartOff
+            }));
+        }
+        Err(e) => {
+            log::warn!("autostart: {e}");
+            balloon(tr(Text::AutostartErrorTitle), &e.to_string());
         }
     }
 }

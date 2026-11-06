@@ -22,6 +22,7 @@ pub enum Text {
     /// `{mode}`
     MenuMode,
     MenuPaused,
+    MenuAutostart,
     MenuSettings,
     MenuEditConfig,
     MenuLogs,
@@ -29,6 +30,9 @@ pub enum Text {
     OsdPaused,
     OsdResumed,
     OsdReloaded,
+    OsdAutostartOn,
+    OsdAutostartOff,
+    AutostartErrorTitle,
     /// App volume popup. `{app}`, `{percent}`
     OsdAppVolume,
     /// `{app}`
@@ -56,13 +60,17 @@ fn en(text: Text) -> Option<&'static str> {
         MenuNoMode => "No mode active",
         MenuMode => "Mode: {mode}",
         MenuPaused => "Paused (knob works as normal)",
-        MenuSettings => "Settings…",
+        MenuAutostart => "Start with Windows",
+        MenuSettings => "Settingsâ¦",
         MenuEditConfig => "Edit config file",
         MenuLogs => "Open log folder",
         MenuQuit => "Quit",
         OsdPaused => "Knob: paused",
         OsdResumed => "Knob: custom functions on",
         OsdReloaded => "Settings reloaded",
+        OsdAutostartOn => "Starts with Windows",
+        OsdAutostartOff => "Doesn’t start with Windows",
+        AutostartErrorTitle => "Can’t change Start with Windows",
         OsdAppVolume => "{app}  {percent}%",
         OsdNoSound => "{app}: no sound playing",
         ConfigErrorTitle => "Config file has an error",
@@ -144,8 +152,8 @@ mod tests {
     #[test]
     fn unknown_languages_fall_back_to_english() {
         set_language("xx-YY");
-        assert_eq!(tr(Text::MenuSettings), "Settings…");
+        assert_eq!(tr(Text::MenuSettings), "Settingsâ¦");
         set_language("en-GB");
-        assert_eq!(tr(Text::MenuSettings), "Settings…");
+        assert_eq!(tr(Text::MenuSettings), "Settingsâ¦");
     }
 }
