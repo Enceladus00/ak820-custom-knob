@@ -7,6 +7,8 @@ combination, and different functions in different apps.
 Only the knob changes. Every other key, including Fn+F2 / Fn+F3 for volume,
 works exactly as before.
 
+[![Download for Windows](https://img.shields.io/badge/Download-for%20Windows-2f6feb?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/Enceladus00/ak820-custom-knob/releases/latest/download/ak820-custom-knob-setup.exe)
+
 ## What the knob can do
 
 The knob has three gestures: **turn**, **press** and **long press**. Each
@@ -58,23 +60,18 @@ function.
 
 ## Install
 
-Download the latest version from the
-[Releases](https://github.com/Enceladus00/ak820-custom-knob/releases) page:
+1. Click **Download for Windows** above. Your browser downloads
+   [`ak820-custom-knob-setup.exe`](https://github.com/Enceladus00/ak820-custom-knob/releases/latest/download/ak820-custom-knob-setup.exe).
+2. Open the downloaded file. If Windows SmartScreen warns about an unknown
+   publisher, choose *More info → Run anyway*; the program isn't code-signed
+   yet. See [Privacy](#privacy) for exactly what it does.
+3. Click through the installer. It needs no administrator rights.
+4. At the end, the knob program starts and Settings opens. Turn the knob.
 
-* **Installer** (`ak820-custom-knob-<version>-setup.exe`): installs for your
-  user account only, no administrator rights needed. Adds Start menu
-  shortcuts and can start the program with Windows.
-* **Portable** (`ak820-custom-knob-<version>-portable.zip`): unpack anywhere
-  and run `ak820-custom-knob.exe`. Keep both exe files in the same folder.
-
-The Settings window needs the Microsoft Edge WebView2 Runtime, which most
-Windows PCs already have. The installer adds it if it's missing. The knob
-itself works without it.
-
-> **Windows SmartScreen** may warn about an unknown publisher, because the
-> program isn't code-signed yet. Choose *More info → Run anyway*. Some
-> antivirus programs are wary of any program that watches the keyboard; see
-> [Privacy](#privacy) for exactly what it does.
+Prefer not to install? The
+[Releases](https://github.com/Enceladus00/ak820-custom-knob/releases) page
+also has `ak820-custom-knob-portable.zip`: unpack it anywhere and run
+`ak820-custom-knob.exe`, keeping both exe files in the same folder.
 
 ## Use
 
@@ -105,20 +102,6 @@ and keeps the last working settings if the file has an error.
 [`default-config.toml`](crates/knob-core/src/default-config.toml) describes
 every option.
 
-## Known limitations
-
-* **Fn+F1 (mute) counts as a knob press.** The keyboard sends exactly the
-  same signal for both, so they can't be told apart. In a mode where the
-  press does something else (Scroll mode: middle click), Fn+F1 does that too.
-* **Fn + knob does nothing.** The keyboard itself ignores the knob while Fn
-  is held, so Fn can't be used as a layer. Ctrl, Shift, Alt and Win work.
-* **Apps running as administrator:** while one is in front, Windows doesn't
-  let a normal program see or send keys there, so the knob works as a plain
-  volume knob.
-* Volume keys (Fn+F2 / Fn+F3, or the volume keys of another keyboard) reach
-  Windows up to 30 ms later than without the program, while it checks that
-  they aren't the knob. This isn't noticeable in normal use.
-
 ## Privacy
 
 To see the knob, the program installs a Windows keyboard hook, which lets it
@@ -130,7 +113,7 @@ internet.
 ## How it works
 
 The knob sends the same volume-up / volume-down / mute signals as Fn+F2,
-Fn+F3 and Fn+F1. The difference is timing: a knob step is released after
+Fn+F3 and Fn+F4. The difference is timing: a knob step is released after
 about 5 ms, while a finger holds a key for 70 ms or more. The program holds
 back volume keys for up to 30 ms. If one came from the AK820 and was released
 by then, it's the knob. Otherwise it's a real key press, which is passed on
@@ -178,10 +161,20 @@ The workspace:
 
 ## Contributing
 
-Bug reports and pull requests are welcome. To add a language, see
-[docs/translating.md](docs/translating.md). If your knob isn't recognised,
-for example over the cable or Bluetooth, a log from `knob-probe` helps add
-support for it.
+Everyone is more than welcome to build on this project, with features for
+the knob or for anything else on the keyboard. Have an idea? Open an issue
+to talk it through, or send a pull request. Bug reports are just as welcome.
+
+To add a language, see [docs/translating.md](docs/translating.md). If your
+knob isn't recognised, for example over the cable or Bluetooth, a log from
+`knob-probe` helps add support for it.
+
+## Notes
+
+**Fn+F4 (mute) counts as a knob press.** The keyboard sends exactly the same
+signal for both, and both are finger presses of similar length, so they
+can't be told apart. In a mode where the press does something else (Scroll
+mode: middle click), Fn+F4 does that too.
 
 ## License
 

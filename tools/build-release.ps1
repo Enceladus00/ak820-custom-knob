@@ -1,4 +1,5 @@
-# Builds a release: the installer and a portable zip, both in dist\.
+# Builds a release: the installer and a portable zip, both in dist:
+#   ak820-custom-knob-setup.exe, ak820-custom-knob-portable.zip
 #
 #   powershell -ExecutionPolicy Bypass -File tools\build-release.ps1
 #
@@ -36,7 +37,9 @@ Remove-Item -Recurse -Force $staging -ErrorAction SilentlyContinue
 New-Item -ItemType Directory $staging | Out-Null
 Copy-Item $exes $staging
 Copy-Item LICENSE (Join-Path $staging 'LICENSE.txt')
-$zip = Join-Path $dist "ak820-custom-knob-$version-portable.zip"
+# Fixed file names (no version), so the README can link to the latest
+# release's files directly.
+$zip = Join-Path $dist 'ak820-custom-knob-portable.zip'
 Remove-Item $zip -ErrorAction SilentlyContinue
 Compress-Archive -Path (Join-Path $staging '*') -DestinationPath $zip
 Remove-Item -Recurse -Force $staging
@@ -54,4 +57,4 @@ if (-not $iscc) {
 if (-not $iscc) { throw 'Inno Setup 6 not found: winget install JRSoftware.InnoSetup' }
 & $iscc /Q "/DAppVersion=$version" installer\ak820-custom-knob.iss
 if ($LASTEXITCODE -ne 0) { throw 'Inno Setup failed' }
-Write-Host "Installer: $(Join-Path $dist "ak820-custom-knob-$version-setup.exe")"
+Write-Host "Installer: $(Join-Path $dist 'ak820-custom-knob-setup.exe')"

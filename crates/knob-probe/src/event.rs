@@ -80,18 +80,42 @@ const STEPS: &[&str] = &[
     "Press (click) the knob 3 times, with pauses.",
     "Press Fn+F3 3 times (the key combo that also raises volume).",
     "Press Fn+F2 3 times (the key combo that also lowers volume).",
-    "Press the Fn combo that mutes (often Fn+F1) 3 times. No such combo? Just skip.",
+    "Press the Fn combo that mutes (Fn+F4 on the AK820 MAX) 3 times. No such combo? Just skip.",
     "HOLD Fn and turn the knob clockwise 3 clicks, then counter-clockwise 3 clicks.",
     "HOLD Fn and press the knob once.",
     "HOLD Ctrl and turn the knob clockwise 3 clicks.",
     "Free play: try anything else you are curious about (other Fn combos, long knob press...).",
 ];
 
+/// `knob-probe mute`: only knob presses and the Fn mute key, many times, to compare how
+/// long each is held.
+const MUTE_STEPS: &[&str] = &[
+    "Tap the knob 10 times, as QUICKLY as you can, with a short pause between taps.",
+    "Press the Fn key that mutes (Fn+F4 on the AK820 MAX) 10 times, as QUICKLY as you can, with a short pause between presses.",
+    "Press the knob 10 times NORMALLY, the way you usually would.",
+    "Press the Fn key that mutes (Fn+F4) 10 times NORMALLY, the way you usually would.",
+];
+
+static MUTE_TEST: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Runs the short knob-press / Fn-mute test instead of the full one.
+pub fn use_mute_test() {
+    MUTE_TEST.store(true, std::sync::atomic::Ordering::SeqCst);
+}
+
+fn steps() -> &'static [&'static str] {
+    if MUTE_TEST.load(std::sync::atomic::Ordering::SeqCst) {
+        MUTE_STEPS
+    } else {
+        STEPS
+    }
+}
+
 struct Logger {
     file: BufWriter<File>,
     /// Press time of keys currently held, to report how long each press lasted.
     held: HashMap<String, f64>,
-    /// 0 = not started, 1..=STEPS.len() = current step.
+    /// 0 = not started, 1..=steps().len() = current step.
     step: usize,
     started: bool,
 }
@@ -114,9 +138,9 @@ impl Logger {
             self.line("Each step: do the action, then press SPACE for the next step.");
             self.line("Ctrl+C quits at any time; the log is saved either way.");
             self.line("Press SPACE to start.");
-        } else if self.step <= STEPS.len() {
-            let text = STEPS[self.step - 1];
-            self.banner(&format!("STEP {}/{}: {text}", self.step, STEPS.len()));
+        } else if self.step <= steps().len() {
+            let text = steps()[self.step - 1];
+            self.banner(&format!("STEP {}/{}: {text}", self.step, steps().len()));
         }
     }
 
@@ -157,7 +181,7 @@ impl Logger {
                     if down && !self.held.contains_key("space") {
                         self.held.insert("space".into(), t);
                         self.step += 1;
-                        if self.step > STEPS.len() {
+                        if self.step > steps().len() {
                             self.banner("DONE - all steps finished, quitting");
                             if let Some(f) = on_finished.take() {
                                 f();

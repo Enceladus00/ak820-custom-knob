@@ -12,7 +12,7 @@ to its stock behaviour (volume) instead of being swallowed.
 | Topic | Decision |
 |---|---|
 | Fn+F2 / Fn+F3 | Passed through as normal volume keys (delayed ~30 ms, not noticeable) |
-| Fn+F1 (mute) | Can't be told apart from a knob click; acts as a knob click (documented limitation) |
+| Fn+F4 (mute) | Can't be told apart from a knob click; acts as a knob click (documented limitation) |
 | Mode switching | **Long press** cycles modes. Double-click is supported but only for rarely needed actions, and only costs click latency in modes that bind it |
 | Connection | 2.4 GHz dongle first (`VID_0C45&PID_FEFC`); wired and Bluetooth later |
 | Settings UI | Tauri (v0.3) |

@@ -7,6 +7,7 @@
 //!
 //! A guided test walks through knob turns, knob clicks and the Fn+F-row keys,
 //! so the log shows whether the knob can be told apart from those keys.
+//! `knob-probe mute` runs a short test of knob presses against the Fn mute key.
 //! Nothing is blocked or changed: every event passes through to Windows.
 
 mod event;
@@ -18,6 +19,9 @@ use std::time::{Instant, SystemTime, UNIX_EPOCH};
 
 fn main() {
     event::START.set(Instant::now()).ok();
+    if std::env::args().nth(1).as_deref() == Some("mute") {
+        event::use_mute_test();
+    }
 
     let dir = std::env::current_dir()
         .unwrap_or_default()

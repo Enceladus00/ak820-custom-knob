@@ -34,7 +34,9 @@ SetupIconFile=..\crates\knob-settings\icons\icon.ico
 UninstallDisplayIcon={app}\{#DaemonExe}
 UninstallDisplayName={#AppName}
 OutputDir=..\dist
-OutputBaseFilename=ak820-custom-knob-{#AppVersion}-setup
+; A fixed name, so github.com/.../releases/latest/download/ak820-custom-knob-setup.exe
+; always points at the newest installer.
+OutputBaseFilename=ak820-custom-knob-setup
 Compression=lzma2/max
 SolidCompression=yes
 WizardStyle=modern

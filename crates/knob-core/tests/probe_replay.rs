@@ -169,7 +169,7 @@ fn guided_probe_session_is_classified_correctly() {
         results[6]
     );
 
-    // 7: Fn+F1 can't be told apart from a knob click (documented limitation)
+    // 7: the Fn mute key (Fn+F4) can't be told apart from a knob click (documented limitation)
     assert_eq!(mutes(&results[7]), 3);
 
     // 8: Fn + knob turns like the knob alone: 3 cw, 3 ccw
