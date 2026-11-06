@@ -15,12 +15,13 @@ use windows::Win32::UI::Shell::{
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     AppendMenuW, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyMenu, DestroyWindow,
-    DispatchMessageW, FindWindowW, GetCursorPos, GetMessageW, IDI_APPLICATION, IsIconic, LoadIconW,
-    MF_CHECKED, MF_GRAYED, MF_SEPARATOR, MF_STRING, MSG, PostMessageW, PostQuitMessage,
-    RegisterClassW, RegisterWindowMessageW, SW_RESTORE, SW_SHOWNORMAL, SetForegroundWindow,
-    ShowWindow, TPM_BOTTOMALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON, TrackPopupMenu, TranslateMessage,
-    WINDOW_EX_STYLE, WM_APP, WM_CONTEXTMENU, WM_DESTROY, WM_LBUTTONUP, WM_NULL, WM_RBUTTONUP,
-    WNDCLASSW, WS_OVERLAPPED,
+    DispatchMessageW, FindWindowW, GetCursorPos, GetMessageW, GetSystemMetrics, HICON,
+    IDI_APPLICATION, IMAGE_ICON, IsIconic, LR_SHARED, LoadIconW, LoadImageW, MF_CHECKED, MF_GRAYED,
+    MF_SEPARATOR, MF_STRING, MSG, PostMessageW, PostQuitMessage, RegisterClassW,
+    RegisterWindowMessageW, SM_CXSMICON, SM_CYSMICON, SW_RESTORE, SW_SHOWNORMAL,
+    SetForegroundWindow, ShowWindow, TPM_BOTTOMALIGN, TPM_RETURNCMD, TPM_RIGHTBUTTON,
+    TrackPopupMenu, TranslateMessage, WINDOW_EX_STYLE, WM_APP, WM_CONTEXTMENU, WM_DESTROY,
+    WM_LBUTTONUP, WM_NULL, WM_RBUTTONUP, WNDCLASSW, WS_OVERLAPPED,
 };
 use windows::core::{HSTRING, PCWSTR, Result, w};
 
@@ -47,6 +48,8 @@ pub enum UiEvent {
     Warning { title: String, text: String },
     /// The language changed: refresh texts that stay on screen.
     LanguageChanged,
+    /// The keyboard was connected or removed.
+    KeyboardChanged,
 }
 
 static HWND_VALUE: AtomicIsize = AtomicIsize::new(0);
@@ -170,6 +173,8 @@ fn tooltip() -> String {
     });
     if knob_win::input::is_paused() {
         tr(Text::TooltipPaused).into()
+    } else if !knob_win::input::keyboard_present() {
+        tr(Text::TooltipNoKeyboard).into()
     } else if mode.is_empty() {
         tr(Text::Tooltip).into()
     } else {
@@ -181,24 +186,48 @@ fn add_icon(hwnd: HWND) {
     let mut data = icon_data(hwnd);
     data.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
     data.uCallbackMessage = WM_TRAY;
-    // The knob icon embedded by build.rs (resource 1), else the generic one.
-    data.hIcon = unsafe {
-        let module = GetModuleHandleW(None).unwrap_or_default();
-        LoadIconW(Some(module.into()), PCWSTR(1 as _)).or_else(|_| LoadIconW(None, IDI_APPLICATION))
-    }
-    .unwrap_or_default();
+    data.hIcon = tray_icon();
     copy_wide(&mut data.szTip, &tooltip());
     unsafe {
         let _ = Shell_NotifyIconW(NIM_ADD, &data);
     }
 }
 
+/// The knob icon embedded by build.rs, in the small-icon size: the normal one
+/// (resource 1), or the grey one (2) while the keyboard isn't connected.
+/// Falls back to the generic application icon.
+fn tray_icon() -> HICON {
+    let id: usize = if knob_win::input::keyboard_present() {
+        1
+    } else {
+        2
+    };
+    unsafe {
+        let module = GetModuleHandleW(None).unwrap_or_default();
+        LoadImageW(
+            Some(module.into()),
+            PCWSTR(id as _),
+            IMAGE_ICON,
+            GetSystemMetrics(SM_CXSMICON),
+            GetSystemMetrics(SM_CYSMICON),
+            LR_SHARED,
+        )
+        .map(|h| HICON(h.0))
+        .or_else(|_| LoadIconW(None, IDI_APPLICATION))
+        .unwrap_or_default()
+    }
+}
+
+/// Refreshes the tray tooltip and icon after a mode, pause, keyboard or
+/// language change.
 fn update_tooltip() {
     let Some(hwnd) = TRAY.with(|t| t.borrow().as_ref().map(|t| t.hwnd)) else {
         return;
     };
     let mut data = icon_data(hwnd);
     data.uFlags = NIF_TIP;
+    data.uFlags = NIF_TIP | NIF_ICON;
+    data.hIcon = tray_icon();
     copy_wide(&mut data.szTip, &tooltip());
     unsafe {
         let _ = Shell_NotifyIconW(NIM_MODIFY, &data);
@@ -237,6 +266,7 @@ fn drain_events() {
             UiEvent::Osd(text) => osd::show(&text),
             UiEvent::Warning { title, text } => balloon(&title, &text),
             UiEvent::LanguageChanged => update_tooltip(),
+            UiEvent::KeyboardChanged => update_tooltip(),
         }
     }
 }
@@ -316,7 +346,9 @@ fn show_menu(hwnd: HWND) {
     let paused = knob_win::input::is_paused();
     unsafe {
         let Ok(menu) = CreatePopupMenu() else { return };
-        let mode_label = HSTRING::from(if mode.is_empty() {
+        let mode_label = HSTRING::from(if !knob_win::input::keyboard_present() {
+            tr(Text::MenuNoKeyboard).to_string()
+        } else if mode.is_empty() {
             tr(Text::MenuNoMode).to_string()
         } else {
             trf(Text::MenuMode, &[("mode", &mode)])

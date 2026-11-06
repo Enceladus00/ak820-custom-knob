@@ -50,10 +50,12 @@ ctrl = { rotate = { action = "zoom" } }
 id = "media"
 name = "Media"
 icon = "music"
-rotate = { action = "keys", cw = "MediaNext", ccw = "MediaPrev" }
+# Arrow keys seek in most video and music players.
+rotate = { action = "keys", cw = "Right", ccw = "Left" }
 click = { action = "keys", keys = "MediaPlayPause" }
 long_press = { action = "cycle_mode" }
-ctrl = { rotate = { action = "volume", step = 2 } }
+ctrl = { rotate = { action = "keys", cw = "MediaNext", ccw = "MediaPrev" } }
+shift = { rotate = { action = "volume", step = 2 } }
 
 # ---------------------------------------------------------------- profiles
 # The first profile whose `match` fits the foreground app wins.

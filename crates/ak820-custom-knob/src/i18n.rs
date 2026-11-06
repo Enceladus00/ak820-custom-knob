@@ -18,7 +18,11 @@ pub enum Text {
     TooltipPaused,
     /// Tooltip with the active mode. `{mode}`
     TooltipMode,
+    /// Tooltip when no supported keyboard is connected.
+    TooltipNoKeyboard,
     MenuNoMode,
+    /// First menu line when no supported keyboard is connected.
+    MenuNoKeyboard,
     /// `{mode}`
     MenuMode,
     MenuPaused,
@@ -57,7 +61,9 @@ fn en(text: Text) -> Option<&'static str> {
         Tooltip => "AK820 knob",
         TooltipPaused => "AK820 knob - paused",
         TooltipMode => "AK820 knob - {mode}",
+        TooltipNoKeyboard => "AK820 knob - keyboard not found",
         MenuNoMode => "No mode active",
+        MenuNoKeyboard => "AK820 not found: plug in its 2.4 GHz receiver",
         MenuMode => "Mode: {mode}",
         MenuPaused => "Paused (knob works as normal)",
         MenuAutostart => "Start with Windows",

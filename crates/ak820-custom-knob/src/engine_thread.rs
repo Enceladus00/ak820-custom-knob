@@ -70,6 +70,7 @@ fn run(config: Config, rx: Receiver<EngineMsg>) {
                 (engine.set_foreground_app(&exe), false)
             }
             Some(EngineMsg::Config(config)) => (engine.set_config(config), false),
+            Some(EngineMsg::Input(InputEvent::KeyboardPresent(_))) => continue, // handled by the UI
         };
         for output in outputs {
             actions.execute(output, announce);

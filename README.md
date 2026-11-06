@@ -17,7 +17,7 @@ comes with three modes, and you can change them or add your own:
 |---|---|---|---|---|
 | Volume | System volume | Mute | Volume of the app in front | |
 | Scroll | Scroll | Middle click | Zoom | Scroll sideways |
-| Media | Next / previous track | Play / pause | System volume | |
+| Media | Right / left arrow key | Play / pause | Next / previous track | System volume |
 
 A short popup shows the new mode when you switch.
 

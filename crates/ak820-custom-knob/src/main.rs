@@ -119,6 +119,10 @@ fn main() {
 
 /// Called on the input thread for every event: hand it to the engine.
 fn forward_input(event: InputEvent) {
+    if let InputEvent::KeyboardPresent(_) = event {
+        ui::notify(ui::UiEvent::KeyboardChanged);
+        return;
+    }
     let delivered = ENGINE
         .get()
         .is_some_and(|tx| tx.send(EngineMsg::Input(event)).is_ok());

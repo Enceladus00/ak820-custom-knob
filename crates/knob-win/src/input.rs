@@ -21,17 +21,17 @@ use windows::Win32::UI::Input::KeyboardAndMouse::{
     GetAsyncKeyState, VK_CONTROL, VK_LWIN, VK_MENU, VK_RWIN, VK_SHIFT,
 };
 use windows::Win32::UI::Input::{
-    GetRawInputData, GetRawInputDeviceInfoW, HRAWINPUT, RAWINPUT, RAWINPUTDEVICE, RAWINPUTHEADER,
-    RID_INPUT, RIDEV_DEVNOTIFY, RIDEV_INPUTSINK, RIDI_DEVICENAME, RIM_TYPEHID,
-    RegisterRawInputDevices,
+    GetRawInputData, GetRawInputDeviceInfoW, GetRawInputDeviceList, HRAWINPUT, RAWINPUT,
+    RAWINPUTDEVICE, RAWINPUTDEVICELIST, RAWINPUTHEADER, RID_INPUT, RIDEV_DEVNOTIFY,
+    RIDEV_INPUTSINK, RIDI_DEVICENAME, RIM_TYPEHID, RegisterRawInputDevices,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     CallNextHookEx, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW,
-    EVENT_SYSTEM_FOREGROUND, GetForegroundWindow, GetMessageW, HC_ACTION, HWND_MESSAGE,
-    KBDLLHOOKSTRUCT, MSG, PostThreadMessageW, RegisterClassW, SetWindowsHookExW, TranslateMessage,
-    UnhookWindowsHookEx, WH_KEYBOARD_LL, WINDOW_EX_STYLE, WINDOW_STYLE, WINEVENT_OUTOFCONTEXT,
-    WINEVENT_SKIPOWNPROCESS, WM_INPUT, WM_INPUT_DEVICE_CHANGE, WM_KEYDOWN, WM_QUIT, WM_SYSKEYDOWN,
-    WNDCLASSW,
+    EVENT_SYSTEM_FOREGROUND, GIDC_REMOVAL, GetForegroundWindow, GetMessageW, HC_ACTION,
+    HWND_MESSAGE, KBDLLHOOKSTRUCT, KillTimer, MSG, PostThreadMessageW, RegisterClassW, SetTimer,
+    SetWindowsHookExW, TranslateMessage, UnhookWindowsHookEx, WH_KEYBOARD_LL, WINDOW_EX_STYLE,
+    WINDOW_STYLE, WINEVENT_OUTOFCONTEXT, WINEVENT_SKIPOWNPROCESS, WM_INPUT, WM_INPUT_DEVICE_CHANGE,
+    WM_KEYDOWN, WM_QUIT, WM_SYSKEYDOWN, WM_TIMER, WNDCLASSW,
 };
 use windows::core::{Result, w};
 
@@ -43,12 +43,25 @@ pub enum InputEvent {
     Core(Input),
     /// The foreground window now belongs to this process.
     Foreground { pid: u32, exe: String },
+    /// A supported keyboard (its receiver) was connected or removed.
+    KeyboardPresent(bool),
 }
 
 static SINK: OnceLock<fn(InputEvent)> = OnceLock::new();
 static THREAD_ID: AtomicU32 = AtomicU32::new(0);
 static PAUSED: AtomicBool = AtomicBool::new(false);
 static ENGINE_ALIVE: AtomicBool = AtomicBool::new(true);
+static KEYBOARD_PRESENT: AtomicBool = AtomicBool::new(false);
+/// Timers on the input window: a regular device rescan, and one shortly after
+/// a device change.
+const TIMER_RESCAN: usize = 1;
+const TIMER_SETTLE: usize = 2;
+
+/// Whether a supported keyboard is connected. Without one, nothing is taken
+/// over: the volume keys and the knob work as without this program.
+pub fn keyboard_present() -> bool {
+    KEYBOARD_PRESENT.load(Ordering::SeqCst)
+}
 
 /// While paused, the knob behaves exactly as without this program.
 pub fn set_paused(paused: bool) {
@@ -122,6 +135,9 @@ pub fn run(sink: fn(InputEvent)) -> Result<()> {
         }];
         RegisterRawInputDevices(&devices, size_of::<RAWINPUTDEVICE>() as u32)?;
         log::debug!("input: raw input registered");
+        scan_devices();
+        // Device-change notices are the main signal; this catches any missed one.
+        let _ = SetTimer(Some(hwnd), TIMER_RESCAN, 2000, None);
 
         let hook = SetWindowsHookExW(WH_KEYBOARD_LL, Some(hook_proc), Some(instance.into()), 0)?;
         log::debug!("input: keyboard hook installed");
@@ -209,10 +225,31 @@ extern "system" fn wndproc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM)
         log::trace!("input wndproc: 0x{msg:04X}");
         match msg {
             WM_INPUT => handle_raw_input(lparam),
-            // A device was plugged in or removed: forget what we knew about it.
-            WM_INPUT_DEVICE_CHANGE => DEVICE_CACHE.with(|c| {
-                c.borrow_mut().remove(&(lparam.0 as usize));
-            }),
+            // A device was plugged in or removed: forget what we knew about it
+            // (handles can be reused) and look again at what is connected, now
+            // and once more when Windows has finished updating its device list.
+            WM_INPUT_DEVICE_CHANGE => {
+                log::info!(
+                    "input: device {} (0x{:X})",
+                    if wparam.0 == GIDC_REMOVAL as usize {
+                        "removed"
+                    } else {
+                        "connected"
+                    },
+                    lparam.0
+                );
+                DEVICE_CACHE.with(|c| {
+                    c.borrow_mut().remove(&(lparam.0 as usize));
+                });
+                scan_devices();
+                let _ = SetTimer(Some(hwnd), TIMER_SETTLE, 500, None);
+            }
+            WM_TIMER => {
+                if wparam.0 == TIMER_SETTLE {
+                    let _ = KillTimer(Some(hwnd), TIMER_SETTLE);
+                }
+                scan_devices();
+            }
             _ => {}
         }
         DefWindowProcW(hwnd, msg, wparam, lparam)
@@ -262,6 +299,39 @@ unsafe fn handle_raw_input(lparam: LPARAM) {
             let usage = u16::from_le_bytes([report[1], report[2]]);
             emit(InputEvent::Core(Input::DeviceReport { t, usage }));
         }
+    }
+}
+
+/// Checks the connected HID devices for a supported keyboard and reports a
+/// change.
+fn scan_devices() {
+    let header = size_of::<RAWINPUTDEVICELIST>() as u32;
+    let mut count = 0u32;
+    let mut list = Vec::new();
+    unsafe {
+        if GetRawInputDeviceList(None, &mut count, header) == u32::MAX {
+            return;
+        }
+        list.resize(count as usize, RAWINPUTDEVICELIST::default());
+        let n = GetRawInputDeviceList(Some(list.as_mut_ptr()), &mut count, header);
+        if n == u32::MAX {
+            return; // the list changed in between; the next change notice rescans
+        }
+        list.truncate(n as usize);
+    }
+    let present = list
+        .iter()
+        .any(|d| d.dwType == RIM_TYPEHID && is_supported_device(d.hDevice));
+    if KEYBOARD_PRESENT.swap(present, Ordering::SeqCst) != present {
+        log::info!(
+            "keyboard {}",
+            if present {
+                "connected"
+            } else {
+                "not connected"
+            }
+        );
+        emit(InputEvent::KeyboardPresent(present));
     }
 }
 
