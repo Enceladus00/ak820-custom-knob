@@ -150,6 +150,9 @@ To build the installer and portable zip into `dist\`, install
 powershell -ExecutionPolicy Bypass -File tools\build-release.ps1
 ```
 
+Published releases are built by GitHub Actions instead; see
+[docs/releasing.md](docs/releasing.md).
+
 The workspace:
 
 | Crate | What it is |
