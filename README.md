@@ -1,6 +1,7 @@
 # AK820 Custom Knob
 
-Gives the knob on the **AJAZZ AK820 MAX** keyboard new jobs on Windows:
+Free, open-source software for the knob on the **AJAZZ AK820 MAX** and
+**AK820 MAX Ultra** keyboards. It gives the knob new jobs on Windows:
 scrolling, zooming, media control, the volume of a single app, any key
 combination, and different functions in different apps.
 
