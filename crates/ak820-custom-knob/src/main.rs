@@ -81,7 +81,7 @@ fn main() {
             log::info!("config reloaded");
             i18n::set_language(&config.ui.language);
             extras::send(extras::ExtrasMsg::Config(Box::new(config.clone())));
-            let _ = engine.send(EngineMsg::Config(config));
+            let _ = engine.send(EngineMsg::Config(Box::new(config)));
             ui::notify(UiEvent::LanguageChanged);
             ui::notify(UiEvent::Osd(tr(Text::OsdReloaded).into()));
         }

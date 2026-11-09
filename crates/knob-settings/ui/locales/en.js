@@ -199,6 +199,20 @@ registerLocale('en', 'English', {
     hintsTitle: 'Click hints',
     hintsLead: 'Puts a small letter label on everything clickable in the app in front. Type a label to click it, or press Esc to cancel. Works in most apps and browsers.',
     hintsKey: 'Show hints hotkey',
+    style: {
+      title: 'Label appearance',
+      background: 'Label',
+      text: 'Letters',
+      typed: 'Typed letters',
+      size: 'Size',
+      radius: 'Corner roundness',
+      opacity: 'Opacity',
+      position: 'Label position',
+      positions: { left: 'Left edge of the item', center: 'Center of the item' },
+      shadow: 'Soft shadow',
+      reset: 'Reset appearance',
+      presets: { midnight: 'Midnight', paper: 'Paper', highlighter: 'Highlighter', ocean: 'Ocean', rose: 'Rose' },
+    },
   },
 
   lighting: {

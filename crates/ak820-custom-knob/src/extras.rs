@@ -296,6 +296,7 @@ impl Extras {
                 .cloned()
                 .zip(targets.iter().copied())
                 .collect(),
+            self.config.hints.style.clone(),
         ));
         self.hints = Some(HintSession {
             labels,

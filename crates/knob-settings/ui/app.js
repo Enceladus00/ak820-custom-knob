@@ -47,6 +47,15 @@ const EFFECTS = [
   { value: 19, color: true, speed: true },
 ];
 
+// Starting points for the click-hint look. Everything stays editable.
+const HINT_PRESETS = {
+  midnight: { background: '#171B24', text: '#FFFFFF', typed: '#7AA7FF', radius: 7, opacity: 94 },
+  paper: { background: '#FFFFFF', text: '#1C1F24', typed: '#2F6FEB', radius: 7, opacity: 96 },
+  highlighter: { background: '#FFD84D', text: '#1A1A1A', typed: '#A06A00', radius: 4, opacity: 100 },
+  ocean: { background: '#0E4C75', text: '#EAF6FF', typed: '#6FD3FF', radius: 9, opacity: 94 },
+  rose: { background: '#3B1530', text: '#FFEAF4', typed: '#FF7AB8', radius: 9, opacity: 94 },
+};
+
 const effectInfo = (value) => EFFECTS.find((e) => e.value === value) ?? EFFECTS[0];
 
 const GESTURES = [
@@ -699,7 +708,62 @@ function controlsPage() {
         <div><strong>${t('controls.hintsKey')}</strong><small>${t('controls.toggleHint')}</small></div>
         ${keycap('hints.hotkey', hints.hotkey)}
       </div>
+      ${hintAppearance(hints.style)}
     </section>`;
+}
+
+function hexAlpha(color, percent) {
+  return color + Math.round(percent * 2.55).toString(16).padStart(2, '0');
+}
+
+/** The labels as they will look, on a sample background. */
+function hintPreview(style) {
+  const shadow = style.shadow ? 'box-shadow:0 1px 6px rgba(0,0,0,.4);' : '';
+  const pill = `background:${esc(hexAlpha(style.background, style.opacity))};color:${esc(style.text)};`
+    + `font-size:${Number(style.size)}px;border-radius:${Number(style.radius)}px;${shadow}`;
+  return `<div class="hint-preview" id="hint-preview" aria-hidden="true">
+    <span class="hint-sample" style="${pill}">A</span><span class="hint-word">Home</span>
+    <span class="hint-sample" style="${pill}">S</span><span class="hint-word">Pricing</span>
+    <span class="hint-sample" style="${pill}"><span style="color:${esc(style.typed)}">D</span>K</span><span class="hint-word">Sign in</span>
+  </div>`;
+}
+
+function refreshHintPreview() {
+  const preview = $('#hint-preview');
+  if (preview) preview.outerHTML = hintPreview(state.config.hints.style);
+}
+
+function hintAppearance(style) {
+  const color = (key) => `<label class="color-field"><span>${t(`controls.style.${key}`)}</span>
+    <input type="color" data-bind="hints.style.${key}" value="${esc(style[key].toLowerCase())}" aria-label="${esc(tPlain(`controls.style.${key}`))}"></label>`;
+  const range = (key, min, max) => `<div class="range-field">
+    <div><strong>${t(`controls.style.${key}`)}</strong></div>
+    <input type="range" min="${min}" max="${max}" step="1" value="${esc(style[key])}" data-bind="hints.style.${key}" data-type="int" data-plain="1" aria-label="${esc(tPlain(`controls.style.${key}`))}">
+    <output>${esc(style[key])}</output>
+  </div>`;
+  const presets = Object.entries(HINT_PRESETS).map(([id, p]) => {
+    const active = ['background', 'text', 'typed'].every((k) => style[k].toLowerCase() === p[k].toLowerCase());
+    return `<button class="preset ${active ? 'active' : ''}" data-cmd="hint-preset" data-preset="${id}">
+      <span class="hint-sample" style="background:${p.background};color:${p.text};border-radius:${p.radius}px">A</span>${t(`controls.style.presets.${id}`)}</button>`;
+  }).join('');
+  return `<h3 class="subhead">${t('controls.style.title')}</h3>
+    ${hintPreview(style)}
+    <div class="preset-row">${presets}</div>
+    <div class="color-row">${color('background')}${color('text')}${color('typed')}</div>
+    ${range('size', 10, 28)}
+    ${range('radius', 0, 14)}
+    ${range('opacity', 40, 100)}
+    <div class="setting-row">
+      <div><strong>${t('controls.style.position')}</strong></div>
+      <select data-bind="hints.style.position" aria-label="${esc(tPlain('controls.style.position'))}">
+        ${['left', 'center'].map((p) => `<option value="${p}" ${style.position === p ? 'selected' : ''}>${t(`controls.style.positions.${p}`)}</option>`).join('')}
+      </select>
+    </div>
+    <label class="setting-row">
+      <div><strong>${t('controls.style.shadow')}</strong></div>
+      <input type="checkbox" data-bind="hints.style.shadow" data-type="bool" ${style.shadow ? 'checked' : ''}>
+    </label>
+    <div class="button-row"><button class="btn" data-cmd="hint-reset">${t('controls.style.reset')}</button></div>`;
 }
 
 // ---------- general page
@@ -769,7 +833,10 @@ let validateTimer = null;
 /** Call after every edit. `rerender` rebuilds the page (not needed while typing). */
 function changed(rerender = true) {
   if (rerender) render();
-  else updateChrome();
+  else {
+    updateChrome();
+    refreshHintPreview();
+  }
   clearTimeout(validateTimer);
   validateTimer = setTimeout(validate, 120);
 }
@@ -979,6 +1046,12 @@ const commands = {
     const i = Number(el.dataset.index);
     const j = i + Number(el.dataset.delta);
     [steps[i], steps[j]] = [steps[j], steps[i]];
+    changed();
+  },
+  'hint-preset': (el) => { Object.assign(state.config.hints.style, HINT_PRESETS[el.dataset.preset]); changed(); },
+  'hint-reset': async () => {
+    const defaults = fromRust(await invoke('default_config'));
+    state.config.hints.style = defaults.hints.style;
     changed();
   },
   'select-layout': (el) => { state.layoutIndex = Number(el.dataset.index); render(); },

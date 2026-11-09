@@ -463,6 +463,19 @@ select.special { min-height: 34px; min-width: 0; font-size: 13px; color: var(--m
 .legend td { padding: 6px 0; border-top: 1px solid var(--border); }
 .legend td:first-child { font-weight: 600; width: 42%; }
 
+/* Click hint appearance */
+.subhead { margin: 20px 0 4px; font-size: 14px; padding-top: 16px; border-top: 1px solid var(--border); }
+.hint-preview { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 20px; margin: 10px 0 14px; border-radius: 10px; background: linear-gradient(120deg, #dfe6f3, #c9d6ea 45%, #eef0f6); color: #1c1f24; }
+.hint-sample { display: inline-flex; align-items: center; justify-content: center; min-width: 1.75em; padding: .1em .45em; font-weight: 600; line-height: 1.35; }
+.hint-word { margin-right: 20px; font-size: 15px; }
+.preset-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.preset { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 7px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface); color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
+.preset .hint-sample { font-size: 12px; }
+.preset:hover { border-color: var(--muted); }
+.preset.active { border-color: var(--accent); background: var(--accent-soft); }
+.color-row { display: flex; flex-wrap: wrap; gap: 24px; padding: 12px 0; border-top: 1px solid var(--border); }
+.color-field { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 14px; }
+
 /* Lighting page */
 .swatch { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 7px; box-shadow: inset 0 0 0 1px rgba(127, 127, 127, .35); }
 .color-controls { display: flex; align-items: center; gap: 14px; }

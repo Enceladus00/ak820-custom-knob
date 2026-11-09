@@ -16,7 +16,7 @@ use crate::ui::{self, UiEvent};
 
 pub enum EngineMsg {
     Input(InputEvent),
-    Config(Config),
+    Config(Box<Config>),
 }
 
 pub fn start(config: Config) -> Sender<EngineMsg> {
@@ -69,7 +69,7 @@ fn run(config: Config, rx: Receiver<EngineMsg>) {
                 actions.set_foreground(&exe);
                 (engine.set_foreground_app(&exe), false)
             }
-            Some(EngineMsg::Config(config)) => (engine.set_config(config), false),
+            Some(EngineMsg::Config(config)) => (engine.set_config(*config), false),
             // Handled before they reach this thread.
             Some(EngineMsg::Input(InputEvent::KeyboardPresent(_) | InputEvent::Extra(_))) => {
                 continue;

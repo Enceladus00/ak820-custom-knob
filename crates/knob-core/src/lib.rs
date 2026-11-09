@@ -13,6 +13,7 @@ pub mod config;
 pub mod engine;
 pub mod extras;
 pub mod gesture;
+pub mod hint_style;
 pub mod keys;
 pub mod pointer;
 pub mod resolver;

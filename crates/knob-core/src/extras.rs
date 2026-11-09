@@ -6,6 +6,7 @@ use std::collections::HashSet;
 use serde::{Deserialize, Serialize};
 
 use crate::config::{Action, Config, MouseButton};
+use crate::hint_style::HintStyle;
 use crate::keys::{Key, KeyCombo};
 
 /// A saved sequence of steps, started by a hotkey or a knob gesture.
@@ -67,6 +68,7 @@ pub struct HintSettings {
     pub enabled: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub hotkey: Option<KeyCombo>,
+    pub style: HintStyle,
 }
 
 impl Default for HintSettings {
@@ -74,6 +76,7 @@ impl Default for HintSettings {
         Self {
             enabled: false,
             hotkey: "Ctrl+Alt+H".parse().ok(),
+            style: HintStyle::default(),
         }
     }
 }
@@ -119,6 +122,8 @@ impl Config {
         if self.hints.enabled {
             hotkey(&self.hints.hotkey, "click hints", errors);
         }
+
+        self.hints.style.check(errors);
 
         for item in &self.macros {
             let ctx = format!("macro '{}'", item.name);

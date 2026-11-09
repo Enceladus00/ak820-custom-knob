@@ -71,12 +71,7 @@ pub struct LightingLayout {
 impl LightingLayout {
     /// `color` as red, green, blue, if it is well formed.
     pub fn rgb(&self) -> Option<[u8; 3]> {
-        let digits = self.color.strip_prefix('#')?;
-        if digits.len() != 6 || !digits.is_ascii() {
-            return None;
-        }
-        let channel = |at: usize| u8::from_str_radix(&digits[at..at + 2], 16).ok();
-        Some([channel(0)?, channel(2)?, channel(4)?])
+        crate::hint_style::parse_color(&self.color)
     }
 
     /// Adds a message to `errors` for everything wrong with this layout.

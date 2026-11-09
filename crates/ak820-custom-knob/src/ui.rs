@@ -57,7 +57,10 @@ pub enum UiEvent {
     /// The keyboard was connected or removed.
     KeyboardChanged,
     /// Put click-hint labels on screen.
-    HintsShow(Vec<(String, knob_win::hints::Target)>),
+    HintsShow(
+        Vec<(String, knob_win::hints::Target)>,
+        knob_core::hint_style::HintStyle,
+    ),
     /// The letters typed so far.
     HintsTyped(String),
     HintsHide,
@@ -279,7 +282,7 @@ fn drain_events() {
             UiEvent::Warning { title, text } => balloon(&title, &text),
             UiEvent::LanguageChanged => update_tooltip(),
             UiEvent::KeyboardChanged => update_tooltip(),
-            UiEvent::HintsShow(labels) => crate::hint_overlay::show(labels),
+            UiEvent::HintsShow(labels, style) => crate::hint_overlay::show(labels, style),
             UiEvent::HintsTyped(text) => crate::hint_overlay::typed(text),
             UiEvent::HintsHide => crate::hint_overlay::hide(),
         }

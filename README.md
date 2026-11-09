@@ -87,6 +87,8 @@ No more pressing Tab over and over to reach a button. Turn it on in Settings,
 press its hotkey (Ctrl+Alt+H by default) or a knob gesture, and a small letter
 label appears on everything clickable in the app in front. Type a label to
 click it, or press Esc to cancel. It works in most apps and in Chrome and Edge.
+You can change how the labels look in Settings: colours, size, roundness,
+opacity, position and shadow, or pick a ready-made style.
 
 ## Lighting
 
