@@ -47,152 +47,332 @@
   </script>
   <style>
     :root {
-      --bg: #f5f6f8; --surface: #ffffff; --text: #1c1f24; --muted: #5d6573;
-      --border: #e1e4ea; --accent: #2f6feb; --accent-text: #ffffff; --soft: #e8effe;
+      color-scheme: light dark;
+      --bg: #f2f3ef; --raised: #e7e9e3; --ink: #15181c; --soft: #555c65; --line: #d4d7cf;
+      --button: #15181c; --button-ink: #ffffff; --mark: #ffd84d;
+      --serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+      --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+      --mono: Consolas, ui-monospace, "SF Mono", Menlo, monospace;
     }
     @media (prefers-color-scheme: dark) {
       :root {
-        --bg: #16181c; --surface: #1f2228; --text: #e8eaee; --muted: #a2aab8;
-        --border: #333842; --accent: #5b8dff; --accent-text: #10131a; --soft: #23314f;
+        --bg: #101215; --raised: #1b1e23; --ink: #eceee9; --soft: #a3aab3; --line: #2c3037;
+        --button: #ffd84d; --button-ink: #15181c;
       }
     }
     * { box-sizing: border-box; }
     html { -webkit-text-size-adjust: 100%; }
-    body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.6 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; }
-    .wrap { max-width: 920px; margin: 0 auto; padding: 0 20px; }
-    header { padding: 64px 0 36px; }
-    .tag { display: inline-block; padding: 4px 12px; border-radius: 99px; background: var(--soft); color: var(--accent); font-size: 14px; font-weight: 600; }
-    h1 { margin: 16px 0 12px; font-size: clamp(32px, 6vw, 48px); line-height: 1.15; letter-spacing: -.02em; }
-    h2 { margin: 0 0 14px; font-size: 26px; letter-spacing: -.01em; }
-    h3 { margin: 22px 0 4px; font-size: 18px; }
-    p { margin: 0 0 12px; }
-    .lede { max-width: 680px; color: var(--muted); font-size: 19px; }
-    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
-    .btn { display: inline-block; padding: 12px 22px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 600; text-decoration: none; }
-    .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
-    .btn:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-    a { color: var(--accent); }
-    img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--border); }
-    section { padding: 34px 0; border-top: 1px solid var(--border); }
-    .hero-shot { padding-bottom: 40px; }
-    ul { margin: 0 0 12px; padding-left: 22px; }
-    li { margin-bottom: 5px; }
-    .table { overflow-x: auto; margin-bottom: 12px; }
-    table { width: 100%; min-width: 540px; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); }
-    th, td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; font-size: 15px; }
-    th { font-weight: 600; }
-    code { padding: 2px 5px; border-radius: 5px; background: var(--soft); font: 14px/1.5 Consolas, ui-monospace, monospace; overflow-wrap: anywhere; }
-    .about { padding: 22px 24px; margin: 8px 0 0; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); }
-    .shot-gap { margin-top: 18px; }
-    footer { padding: 26px 0 44px; border-top: 1px solid var(--border); color: var(--muted); font-size: 14px; }
+    @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.65 var(--sans); -webkit-font-smoothing: antialiased; }
+    .wrap { width: min(1120px, 100%); margin: 0 auto; padding: 0 28px; }
+
+    a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 3px; transition: text-decoration-color .15s; }
+    a:hover { text-decoration-color: var(--soft); }
+    :focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; border-radius: 2px; }
+
+    .bar { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 16px 0; background: var(--bg); font-size: 15px; }
+    section[id] { scroll-margin-top: 44px; }
+    @media (hover: none) { .try { display: none; } }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 600; text-decoration: none; }
+    .brand img { width: 26px; height: 26px; }
+    .bar nav { display: flex; gap: 22px; }
+    .bar nav a { color: var(--soft); text-decoration: none; transition: color .15s; }
+    .bar nav a:hover { color: var(--ink); }
+
+    h1, h2 { font-family: var(--serif); font-weight: 400; letter-spacing: -.012em; }
+    h1 { max-width: 13em; margin: 72px 0 22px; font-size: clamp(42px, 7.2vw, 78px); line-height: 1.05; }
+    h2 { margin: 0 0 16px; font-size: clamp(28px, 3.4vw, 36px); line-height: 1.18; }
+    h3 { margin: 0 0 4px; font-size: 17px; font-weight: 600; }
+    p { margin: 0 0 14px; }
+    .lede { max-width: 34em; font-size: clamp(18px, 2vw, 21px); line-height: 1.55; }
+    .soft { color: var(--soft); }
+    .small { font-size: 15px; }
+
+    .get { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; margin: 30px 0 14px; }
+    .button { display: inline-block; padding: 13px 24px; border: 0; border-radius: 6px; background: var(--button); color: var(--button-ink); font: 600 16px/1.3 var(--sans); text-decoration: none; cursor: pointer; transition: transform .15s, opacity .15s; }
+    .button:hover { opacity: .88; }
+    .button:active { transform: translateY(1px); }
+    .button.quiet { padding: 8px 15px; background: var(--raised); color: var(--ink); font-size: 15px; }
+
+    .shot { display: block; width: 100%; height: auto; border-radius: 10px; }
+    .hero-shot { margin: 58px 0 0; }
+    section { padding: 92px 0 0; }
+    .side { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 56px; align-items: start; }
+    .side.flip { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+    .side.flip > :first-child { order: 2; }
+    .measure { max-width: 40em; }
+
+    .modes { width: 100%; margin: 26px 0 6px; border-collapse: collapse; font-size: 16px; }
+    .modes th, .modes td { padding: 13px 18px 13px 0; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; font-weight: 400; }
+    .modes thead th { padding-top: 0; color: var(--soft); font-size: 14px; }
+    .modes tbody th { font-family: var(--serif); font-size: 20px; line-height: 1.3; }
+
+    kbd { display: inline-block; min-width: 1.7em; padding: 1px 7px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: var(--raised); font: 13.5px/1.6 var(--mono); text-align: center; white-space: nowrap; }
+    .keys { display: grid; grid-template-columns: max-content 1fr; gap: 9px 18px; margin: 20px 0 16px; align-items: baseline; }
+    .keys dt, .keys dd { margin: 0; }
+    .trio { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 56px; }
+
+    .questions { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 8fr); gap: 56px; }
+    details { border-bottom: 1px solid var(--line); }
+    details:first-child { border-top: 1px solid var(--line); }
+    summary { display: flex; justify-content: space-between; gap: 18px; padding: 15px 0; font-weight: 600; cursor: pointer; list-style: none; }
+    summary::-webkit-details-marker { display: none; }
+    summary::after { content: "+"; color: var(--soft); font: 400 21px/1.2 var(--mono); transition: transform .2s; }
+    details[open] summary::after { transform: rotate(45deg); }
+    details p { padding-bottom: 8px; max-width: 42em; }
+    @supports (interpolate-size: allow-keywords) {
+      details { interpolate-size: allow-keywords; }
+      details::details-content { height: 0; overflow: clip; transition: height .22s ease, content-visibility .22s allow-discrete; }
+      details[open]::details-content { height: auto; }
+    }
+    code { font: 14.5px/1.5 var(--mono); overflow-wrap: anywhere; }
+    pre { margin: 0 0 14px; padding: 13px 16px; border-radius: 6px; background: var(--raised); white-space: pre-wrap; }
+
+    footer { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 56px; margin-top: 104px; padding: 30px 0 48px; border-top: 1px solid var(--line); color: var(--soft); font-size: 15px; }
+
+    #hint-layer { position: fixed; inset: 0; z-index: 10; pointer-events: none; }
+    .hint { position: absolute; padding: 1px 7px; border-radius: 7px; background: #171b24; color: #fff; font: 700 14px/1.45 var(--sans); box-shadow: 0 2px 7px rgb(0 0 0 / .35); transform: translate(-3px, 3px); }
+
+    @media (max-width: 820px) {
+      .wrap { padding: 0 16px; }
+      h1 { margin-top: 40px; }
+      .hero-shot { margin-top: 40px; }
+      section { padding-top: 64px; }
+      .side, .side.flip, .trio, .questions, footer { grid-template-columns: minmax(0, 1fr); gap: 26px; }
+      .side.flip > :first-child { order: 0; }
+      .trio { gap: 56px; }
+      .bar nav a:not(:last-child) { display: none; }
+    }
+    @media (max-width: 620px) {
+      .modes thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+      .modes, .modes tbody, .modes tr, .modes th, .modes td { display: block; }
+      .modes tr { padding: 14px 0; border-bottom: 1px solid var(--line); }
+      .modes th, .modes td { padding: 2px 0; border: 0; }
+      .modes tbody th { margin-bottom: 4px; }
+      .modes td:empty { display: none; }
+      .modes td::before { content: attr(data-label) ": "; color: var(--soft); }
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
-    <header>
-      <span class="tag">Unofficial · Free · Open source</span>
-      <h1>Remap the AJAZZ AK820 MAX Ultra knob on Windows</h1>
-      <p class="lede">Bind the knob to volume, scrolling, zoom, media keys or any shortcut, with different functions in different apps. Add macros, a keyboard-controlled mouse and click hints too. Nothing changes until you turn it on.</p>
-      <div class="actions">
-        <a class="btn primary" href="https://github.com/Enceladus00/ak820-max-ultra-toolbox/releases/latest/download/ak820-custom-knob-setup.exe">Download for Windows</a>
-        <a class="btn" href="https://github.com/Enceladus00/ak820-max-ultra-toolbox">View the code on GitHub</a>
-      </div>
-    </header>
-
-    <div class="hero-shot">
-      <img src="images/settings-modes.png" width="2240" height="1414" alt="The Modes page in Settings, showing what the knob does when turned, pressed and long-pressed">
+    <div class="bar">
+      <a class="brand" href="#top"><img src="images/icon.png" width="26" height="26" alt="">AK820 MAX Ultra Toolbox</a>
+      <nav aria-label="Page">
+        <a href="#knob">The knob</a>
+        <a href="#extras">Macros and mouse</a>
+        <a href="#compatibility">Compatibility</a>
+        <a href="https://github.com/Enceladus00/ak820-max-ultra-toolbox">GitHub</a>
+      </nav>
     </div>
 
-    <section>
-      <h2>What you can bind to the knob</h2>
-      <p>The knob has three gestures: turn, press and long press. Each mode gives them a job, and a long press switches to the next mode.</p>
-      <ul>
-        <li>System volume, or the volume of only the app in front</li>
-        <li>Mute</li>
-        <li>Scrolling up, down or sideways, and zoom</li>
-        <li>Any key or key combination, with a different one per direction</li>
-        <li>Mouse clicks: left, middle or right</li>
-        <li>Different functions while you hold Ctrl, Shift, Alt or Win</li>
-      </ul>
-      <div class="table">
-        <table>
-          <thead><tr><th>Mode</th><th>Turn</th><th>Press</th><th>Ctrl + turn</th><th>Shift + turn</th></tr></thead>
+    <main>
+      <h1>Remap the knob on your AJAZZ AK820 MAX Ultra.</h1>
+      <p class="lede">Out of the box it only controls volume. This small Windows program lets it scroll, zoom, skip tracks or press any shortcut, and do something different in each app.</p>
+      <div class="get">
+        <a class="button" href="https://github.com/Enceladus00/ak820-max-ultra-toolbox/releases/latest/download/ak820-custom-knob-setup.exe">Download for Windows</a>
+        <a href="https://github.com/Enceladus00/ak820-max-ultra-toolbox">Read the source</a>
+      </div>
+      <p class="soft small">Windows 10 or 11, 64-bit. Free, with no account. An unofficial community project, not made by AJAZZ.</p>
+
+      <img class="shot hero-shot" src="images/settings-modes.png" width="2240" height="1414" alt="The Modes page in Settings, showing what the knob does when turned, pressed and long-pressed">
+
+      <section id="knob">
+        <h2>What you can bind to the knob</h2>
+        <p class="measure">You get turn, press and long press. A set of jobs for those is a mode, and a long press moves to the next one. Three come ready to use, and you can edit them or add your own.</p>
+        <table class="modes">
+          <thead><tr><th scope="col">Mode</th><th scope="col">Turn</th><th scope="col">Press</th><th scope="col">Ctrl + turn</th><th scope="col">Shift + turn</th></tr></thead>
           <tbody>
-            <tr><td>Volume</td><td>System volume</td><td>Mute</td><td>Volume of the app in front</td><td></td></tr>
-            <tr><td>Scroll</td><td>Scroll</td><td>Middle click</td><td>Zoom</td><td>Scroll sideways</td></tr>
-            <tr><td>Media</td><td>Right / left arrow</td><td>Play / pause</td><td>Next / previous track</td><td>System volume</td></tr>
+            <tr><th scope="row">Volume</th><td data-label="Turn">System volume</td><td data-label="Press">Mute</td><td data-label="Ctrl + turn">Volume of the app in front</td><td data-label="Shift + turn"></td></tr>
+            <tr><th scope="row">Scroll</th><td data-label="Turn">Scroll</td><td data-label="Press">Middle click</td><td data-label="Ctrl + turn">Zoom</td><td data-label="Shift + turn">Scroll sideways</td></tr>
+            <tr><th scope="row">Media</th><td data-label="Turn">Right / left arrow</td><td data-label="Press">Play / pause</td><td data-label="Ctrl + turn">Next / previous track</td><td data-label="Shift + turn">System volume</td></tr>
           </tbody>
         </table>
-      </div>
-      <p>These are the three built-in modes. You can change them or add your own.</p>
-    </section>
+        <p class="measure soft small">Any key combination works too, with a different one per direction. Bind <kbd>.</kbd> and <kbd>,</kbd> to step through a paused YouTube video one frame at a time.</p>
+      </section>
 
-    <section>
-      <h2>Different knob functions in different apps</h2>
-      <p>Choose which modes the knob has in each app, for example a Timeline mode in your video editor. It switches automatically when another app comes to the front.</p>
-      <img class="shot-gap" loading="lazy" src="images/settings-apps.png" width="2240" height="1360" alt="The Apps page in Settings, with a video editor using its own Timeline mode and every other app using the default modes">
-    </section>
+      <section>
+        <div class="side">
+          <div>
+            <h2>Different knob functions in different apps</h2>
+            <p>Pick which modes the knob has in each app, like a Timeline mode that only exists in your video editor. It switches by itself when another app comes to the front.</p>
+          </div>
+          <img class="shot" loading="lazy" src="images/settings-apps.png" width="2240" height="1360" alt="The Apps page in Settings, with a video editor using its own Timeline mode and every other app using the default modes">
+        </div>
+      </section>
 
-    <section>
-      <h2>Macros</h2>
-      <p>Save a sequence of key presses, typed text, waits and mouse clicks, and start it with a hotkey or a knob gesture. Press Record to capture keys and the pauses between them, then edit the steps.</p>
-    </section>
+      <section id="extras">
+        <div class="trio">
+          <div>
+            <h2>Use the mouse from your keyboard</h2>
+            <p>For when you're sitting across the room from your PC. Press <kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>M</kbd> and these keys take over the pointer. Everything else keeps typing.</p>
+            <dl class="keys">
+              <dt><kbd>↑</kbd> <kbd>←</kbd> <kbd>↓</kbd> <kbd>→</kbd></dt><dd>Move</dd>
+              <dt><kbd>Right Ctrl</kbd></dt><dd>Left click, hold to drag</dd>
+              <dt><kbd>Right Shift</kbd></dt><dd>Right click</dd>
+              <dt><kbd>PgUp</kbd> <kbd>PgDn</kbd></dt><dd>Scroll</dd>
+              <dt><kbd>Home</kbd></dt><dd>Hold to move slowly</dd>
+              <dt><kbd>Esc</kbd></dt><dd>Leave mouse mode</dd>
+            </dl>
+          </div>
+          <div>
+            <h2>Click hints</h2>
+            <p>Some websites take thirty presses of Tab to reach one button. Press <kbd>Ctrl</kbd> <kbd>Alt</kbd> <kbd>H</kbd> instead and everything clickable gets a letter. Type the letter to click it, or hold Shift to right-click.</p>
+            <p>It works in most apps and in Chrome and Edge, and you can change how the labels look.</p>
+            <div class="try">
+              <p><button class="button quiet" type="button" id="hint-try" aria-pressed="false">Try it on this page</button></p>
+              <p class="soft small" id="hint-status" role="status"></p>
+            </div>
+          </div>
+          <div>
+            <h2>Macros</h2>
+            <p>Save key presses, typed text, waits and mouse clicks, then start them with a hotkey or a knob gesture. Press Record to capture keys with their timing and edit the steps afterwards. <kbd>Esc</kbd> stops a macro that's running.</p>
+          </div>
+          <div>
+            <h2>Off until you want them</h2>
+            <p>Mouse mode, hints and macros stay off until you turn them on in Settings. Until then only the knob changes, and every other key behaves as it always did.</p>
+          </div>
+        </div>
+      </section>
 
-    <section>
-      <h2>Use the mouse from your keyboard</h2>
-      <p>Handy when you sit away from your desk. In mouse mode the arrow keys move the pointer, Right Ctrl and Right Shift click, and Page Up and Page Down scroll. All other keys keep typing as usual.</p>
-      <h3>Click hints</h3>
-      <p>No more pressing Tab over and over to reach a button. Press a key and a small letter label appears on everything clickable in the app or website in front. Type a label to click it. Colours, size and shape are yours to change.</p>
-    </section>
+      <section>
+        <div class="side flip">
+          <div>
+            <h2>Keyboard lighting layouts</h2>
+            <p>Save layouts with an effect, colour, brightness and speed. There are seven to start from and 19 effects. The lights only change when you click Apply.</p>
+          </div>
+          <img class="shot" loading="lazy" src="images/settings-lighting.png" width="2240" height="1360" alt="The Lighting page in Settings, with a list of saved layouts and the controls for one of them">
+        </div>
+      </section>
 
-    <section>
-      <h2>Keyboard lighting layouts</h2>
-      <p>Save lighting layouts with an effect, a colour or colour cycling, brightness and speed, then apply one with a click. It comes with seven layouts and 19 effects.</p>
-      <img class="shot-gap" loading="lazy" src="images/settings-lighting.png" width="2240" height="1360" alt="The Lighting page in Settings, with a list of saved layouts and the controls for one of them">
-    </section>
+      <section id="compatibility">
+        <div class="measure">
+          <h2>Have a different AK820 MAX?</h2>
+          <p>This has only been tested on one AK820 MAX Ultra over its 2.4 GHz receiver. Other keyboards sold as AK820 MAX can use different hardware, and the USB cable and Bluetooth aren't tested yet. With your receiver plugged in, this PowerShell command lists it if it's the right one:</p>
+          <pre><code>Get-PnpDevice -PresentOnly | Where-Object InstanceId -match 'VID_0C45&amp;PID_FEFC'</code></pre>
+          <p>You can also just install it. If the tray icon stays grey with a red badge while the receiver is plugged in, your version isn't supported yet, and the knob goes on controlling volume.</p>
+        </div>
+      </section>
 
-    <section>
-      <h2>Have a different AK820 MAX?</h2>
-      <p>This program has only been tested on the AK820 MAX Ultra. Other versions sold as AK820 MAX can use different hardware, and it only recognises a 2.4 GHz receiver that Windows sees as <code>VID_0C45&amp;PID_FEFC</code>. With the receiver plugged in, run this in PowerShell:</p>
-      <p><code>Get-PnpDevice -PresentOnly | Where-Object InstanceId -match 'VID_0C45&amp;PID_FEFC'</code></p>
-      <p>If it lists devices, you have that receiver. You can also just install it: if the tray icon stays grey with a red badge while the receiver is plugged in, your version isn't supported yet. Nothing changes for your keyboard in that case. The USB cable and Bluetooth aren't tested yet.</p>
-    </section>
-
-    <section>
-      <h2>Questions</h2>
-      <h3>How do I remap the knob on the AJAZZ AK820 MAX Ultra?</h3>
-      <p>Install AK820 MAX Ultra Toolbox, open Settings, and on the Modes page choose what turning, pressing and long-pressing the knob should do. Save, and the knob uses the new functions right away.</p>
-      <h3>Can I bind a keyboard shortcut to the AK820 MAX Ultra knob?</h3>
-      <p>Yes. Choose <em>Press keys</em>, click the key field and press any key or combination. Turning clockwise and counter-clockwise can each have their own.</p>
-      <h3>Can the knob do different things in different apps?</h3>
-      <p>Yes. The Apps page sets which modes the knob has in each app, and it switches automatically when another app comes to the front.</p>
-      <h3>Can I use the AK820 MAX Ultra as a mouse?</h3>
-      <p>Yes. Turn on Mouse mode and the arrow keys move the pointer, with the keys next to them for clicking and scrolling.</p>
-      <h3>Can I record macros on the AK820 MAX Ultra?</h3>
-      <p>Yes. On the Macros page press Record, press your keys, then give the macro a hotkey or bind it to the knob.</p>
-      <h3>Do I need the official AJAZZ software?</h3>
-      <p>No. AK820 MAX Ultra Toolbox works on its own.</p>
-      <h3>Does it change my keyboard's firmware?</h3>
-      <p>No. The knob functions all run on your PC and write nothing to the keyboard. Lighting settings are sent to the keyboard only when you click Apply, and they don't touch the firmware.</p>
-      <h3>Does it work with the regular AK820 MAX, AK820 Pro, MAX Plus or MAX HE?</h3>
-      <p>It has only been tested on an AK820 MAX Ultra over its 2.4 GHz receiver. Other models and versions use different hardware or haven't been tested. If yours isn't recognised, the program does nothing and the knob keeps working normally.</p>
-      <h3>Does it work on Mac or Linux?</h3>
-      <p>Not at the moment. It needs Windows 10 or 11, 64-bit.</p>
-    </section>
-
-    <section>
-      <h2>Unofficial, free and open source</h2>
-      <div class="about">
-        <p>AK820 MAX Ultra Toolbox is a community project. It isn't made, endorsed or supported by AJAZZ.</p>
-        <p>All of the code is public under the Apache 2.0 license, so anyone can read exactly what it does. Releases are built by GitHub Actions from that public code, it needs no account, and it never connects to the internet.</p>
-        <p>As the license says, it is provided as-is, without warranty, and the author isn't responsible for problems that come from using it. If something doesn't work, please <a href="https://github.com/Enceladus00/ak820-max-ultra-toolbox/issues">open an issue</a>.</p>
-      </div>
-    </section>
+      <section>
+        <div class="questions">
+          <h2>Questions</h2>
+          <div>
+          <details>
+            <summary>How do I remap the knob on the AJAZZ AK820 MAX Ultra?</summary>
+            <p>Install AK820 MAX Ultra Toolbox, open Settings, and on the Modes page choose what turning, pressing and long-pressing the knob should do. Save, and the knob uses the new functions right away.</p>
+          </details>
+          <details>
+            <summary>Can I bind a keyboard shortcut to the AK820 MAX Ultra knob?</summary>
+            <p>Yes. Choose <em>Press keys</em>, click the key field and press any key or combination. Turning clockwise and counter-clockwise can each have their own.</p>
+          </details>
+          <details>
+            <summary>Can the knob do different things in different apps?</summary>
+            <p>Yes. The Apps page sets which modes the knob has in each app, and it switches automatically when another app comes to the front.</p>
+          </details>
+          <details>
+            <summary>Can I use the AK820 MAX Ultra as a mouse?</summary>
+            <p>Yes. Turn on Mouse mode and the arrow keys move the pointer, with the keys next to them for clicking and scrolling.</p>
+          </details>
+          <details>
+            <summary>Can I record macros on the AK820 MAX Ultra?</summary>
+            <p>Yes. On the Macros page press Record, press your keys, then give the macro a hotkey or bind it to the knob.</p>
+          </details>
+          <details>
+            <summary>Do I need the official AJAZZ software?</summary>
+            <p>No. AK820 MAX Ultra Toolbox works on its own.</p>
+          </details>
+          <details>
+            <summary>Does it change my keyboard's firmware?</summary>
+            <p>No. The knob functions all run on your PC and write nothing to the keyboard. Lighting settings are sent to the keyboard only when you click Apply, and they don't touch the firmware.</p>
+          </details>
+          <details>
+            <summary>Does it work with the regular AK820 MAX, AK820 Pro, MAX Plus or MAX HE?</summary>
+            <p>It has only been tested on an AK820 MAX Ultra over its 2.4 GHz receiver. Other models and versions use different hardware or haven't been tested. If yours isn't recognised, the program does nothing and the knob keeps working normally.</p>
+          </details>
+          <details>
+            <summary>Does it work on Mac or Linux?</summary>
+            <p>Not at the moment. It needs Windows 10 or 11, 64-bit.</p>
+          </details>
+          <details>
+            <summary>Is it official?</summary>
+            <p>No. It is a free, open-source community project, not made or endorsed by AJAZZ, and provided as-is under the Apache 2.0 license.</p>
+          </details>
+          </div>
+        </div>
+      </section>
+    </main>
 
     <footer>
-      AK820 MAX Ultra Toolbox · <a href="https://github.com/Enceladus00/ak820-max-ultra-toolbox">GitHub</a> · <a href="https://github.com/Enceladus00/ak820-max-ultra-toolbox/blob/main/LICENSE">Apache 2.0</a><br>
-      AJAZZ and AK820 are names of their respective owner and are used here only to say which keyboard this software is for.
+      <div>
+        <p>AK820 MAX Ultra Toolbox<br><a href="https://github.com/Enceladus00/ak820-max-ultra-toolbox">GitHub</a> · <a href="https://github.com/Enceladus00/ak820-max-ultra-toolbox/blob/main/LICENSE">Apache 2.0</a> · <a href="https://github.com/Enceladus00/ak820-max-ultra-toolbox/issues">Report a problem</a></p>
+      </div>
+      <div>
+        <p>A community project, not made, endorsed or supported by AJAZZ. All of the code is public, releases are built from it by GitHub Actions, it needs no account and it never connects to the internet. As the license says, it comes as-is, without warranty, and the author isn't responsible for problems that come from using it.</p>
+        <p>AJAZZ and AK820 are names of their respective owner and are used here only to say which keyboard this software is for.</p>
+      </div>
     </footer>
   </div>
+
+  <script>
+    // The page's own small version of the app's click hints.
+    (() => {
+      const button = document.getElementById('hint-try');
+      const status = document.getElementById('hint-status');
+      const LETTERS = 'asdfghjklqwertyuiopzxcvbnm';
+      let layer = null;
+      let targets = new Map();
+
+      const close = (message = '') => {
+        if (!layer) return;
+        layer.remove();
+        layer = null;
+        targets.clear();
+        button.setAttribute('aria-pressed', 'false');
+        status.textContent = message;
+        removeEventListener('keydown', onKey, true);
+        removeEventListener('scroll', onMove, true);
+        removeEventListener('resize', onMove);
+      };
+      const onMove = () => close();
+      const onKey = (e) => {
+        if (e.ctrlKey || e.altKey || e.metaKey) return close();
+        if (['Shift', 'CapsLock'].includes(e.key)) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const target = targets.get(e.key.toLowerCase());
+        close(target ? '' : 'Closed.');
+        if (target) { target.focus({ preventScroll: true }); target.click(); }
+      };
+      const open = () => {
+        const visible = [...document.querySelectorAll('a[href], summary')].filter((el) => {
+          if (el.href && el.href.includes('/releases/')) return false; // never start a download by accident
+          const r = el.getBoundingClientRect();
+          return r.width > 0 && r.height > 0 && r.top >= 0 && r.bottom <= innerHeight;
+        }).slice(0, LETTERS.length);
+        if (!visible.length) { status.textContent = 'Nothing clickable is on screen right now.'; return; }
+        layer = document.createElement('div');
+        layer.id = 'hint-layer';
+        layer.setAttribute('aria-hidden', 'true');
+        visible.forEach((el, i) => {
+          const r = el.getBoundingClientRect();
+          const tag = document.createElement('span');
+          tag.className = 'hint';
+          tag.textContent = LETTERS[i].toUpperCase();
+          tag.style.left = r.left + 'px';
+          tag.style.top = r.bottom + 'px';
+          layer.append(tag);
+          targets.set(LETTERS[i], el);
+        });
+        document.body.append(layer);
+        button.setAttribute('aria-pressed', 'true');
+        status.textContent = 'Type a letter to click that item. Esc closes the labels.';
+        addEventListener('keydown', onKey, true);
+        addEventListener('scroll', onMove, true);
+        addEventListener('resize', onMove);
+      };
+      button.addEventListener('click', () => (layer ? close() : open()));
+    })();
+  </script>
 </body>
 </html>

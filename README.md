@@ -1,75 +1,89 @@
 # AK820 MAX Ultra Toolbox
 
-Free, open-source software that adds what the **AJAZZ AK820 MAX Ultra**
-keyboard is missing on Windows. It gives the knob new jobs:
-scrolling, zooming, media control, the volume of a single app, any key
-combination, and different functions in different apps. It also adds macros,
-a mouse you control from the keyboard, click-by-letter hints for any app or
-website, and lighting layouts.
+Windows software for the AJAZZ AK820 MAX Ultra. Out of the box the knob only
+controls volume. With this you can bind it to scrolling, zooming, media keys
+or any shortcut, and give it a different job in each app.
 
-By default only the knob changes: every other key, including Fn+F2 / Fn+F3
-for volume, works exactly as before. Macros, mouse mode and click hints stay
-off until you turn them on. This is unofficial, free and
-[open-source](#unofficial-free-and-open-source) software, with a
-[project website](https://enceladus00.github.io/ak820-max-ultra-toolbox/) too.
+It also does a few other things I wanted from my keyboard. I often use my PC
+from across the room, so the arrow keys can drive the mouse, and letter hints
+let me click a link without pressing Tab thirty times to reach it. There are
+macros and lighting layouts too.
 
-[![Download for Windows](https://img.shields.io/badge/Download-for%20Windows-2f6feb?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/Enceladus00/ak820-max-ultra-toolbox/releases/latest/download/ak820-custom-knob-setup.exe)
+Only the knob changes by default. Every other key behaves as before, including
+Fn+F2 and Fn+F3 for volume, and the extras stay off until you turn them on.
+
+**[Download the installer](https://github.com/Enceladus00/ak820-max-ultra-toolbox/releases/latest/download/ak820-custom-knob-setup.exe)**
+· [Website](https://enceladus00.github.io/ak820-max-ultra-toolbox/)
+· [All releases](https://github.com/Enceladus00/ak820-max-ultra-toolbox/releases)
+
+This is an [unofficial community project](#unofficial-free-and-open-source),
+not made by AJAZZ. It's free and all of the code is here.
 
 ![The Modes page in Settings, showing what the knob does when turned, pressed and long-pressed](docs/images/settings-modes.png)
 
-## What the knob can do
+## Install
 
-The knob has three gestures: **turn**, **press** and **long press**. Each
-**mode** gives them a job, and a long press switches to the next mode. It
-comes with three modes, and you can change them or add your own:
+Needs Windows 10 or 11 (64-bit) and the keyboard's 2.4 GHz receiver.
 
-| Mode | Turn | Press | Holding Ctrl while turning | Holding Shift while turning |
+1. Download and open
+   [`ak820-custom-knob-setup.exe`](https://github.com/Enceladus00/ak820-max-ultra-toolbox/releases/latest/download/ak820-custom-knob-setup.exe).
+   No administrator rights needed.
+2. If SmartScreen warns about an unknown publisher, choose *More info → Run
+   anyway*. The program isn't code-signed yet; [Privacy](#privacy) covers what
+   it does on your PC.
+3. When the installer finishes, Settings opens. Turn the knob.
+
+If you'd rather not install anything, the
+[Releases](https://github.com/Enceladus00/ak820-max-ultra-toolbox/releases) page
+has `ak820-custom-knob-portable.zip`. Unpack it anywhere and run
+`ak820-custom-knob.exe`, keeping both exe files in the same folder.
+
+The program lives in the tray next to the clock. Click the icon for Settings,
+or right-click it to pause, start with Windows, or quit. Changes apply as soon
+as you save.
+
+## The knob
+
+You get turn, press and long press, plus double press if you want it. A set of
+jobs for those is a **mode**, and a long press moves to the next one. Three
+modes come ready to use, and you can edit them or add more:
+
+| Mode | Turn | Press | Ctrl + turn | Shift + turn |
 |---|---|---|---|---|
 | Volume | System volume | Mute | Volume of the app in front | |
 | Scroll | Scroll | Middle click | Zoom | Scroll sideways |
 | Media | Right / left arrow key | Play / pause | Next / previous track | System volume |
 
-A short popup shows the new mode when you switch.
+You can bind system volume or the volume of a single app, mute, scrolling in
+either direction, zoom, mouse clicks, switching modes, or any key combination.
+Each direction can have its own: `.` and `,` step through a paused YouTube
+video one frame at a time. Holding Ctrl, Shift, Alt or Win gives the knob a
+separate set of jobs in every mode.
 
-The available actions:
-
-* system volume, or the volume of only the app in front
-* mute
-* scroll (up/down or sideways, faster when you spin fast), zoom
-* press any key or key combination, with a different one per direction
-  (for example `.` and `,` to step through a paused YouTube video frame by
-  frame)
-* mouse click (left, middle, right)
-* switch to the next mode
-* the knob's normal behaviour, or nothing
-
-**Modifier layers:** each mode can give the knob other jobs while you hold
-Ctrl, Shift, Alt or Win.
-
-**Per-app modes:** choose which modes the knob has in which app, for example
-only a "Timeline" mode in your video editor. It switches automatically when
-another app comes to the front, and can remember the last mode you used
-there.
+The **Apps** page picks which modes are available in which app, so your video
+editor can have a Timeline mode that nothing else sees. The knob switches by
+itself when another app comes to the front.
 
 ![The Apps page in Settings, with a video editor using its own Timeline mode and every other app using the default modes](docs/images/settings-apps.png)
 
-**Double press** is available too, for rarely needed actions. Modes that use
-it make a single press wait a moment to see whether a second one follows.
+One quirk: Fn+F4 counts as a knob press, because the keyboard sends the same
+signal for both and they can't be told apart. In Scroll mode, Fn+F4 is a middle
+click.
 
 ## Macros
 
-Save a sequence of key presses, typed text, waits and mouse clicks, and start
-it with a hotkey or a knob gesture. Press **Record** to capture keys and the
-pauses between them, then edit the steps. A macro can repeat a set number of
-times or until stopped; press its hotkey again or Esc to stop it. Text in a
-macro is stored unencrypted in the config file, so don't put passwords in one.
-Some games don't allow macros, so check their rules first.
+A macro is a list of key presses, typed text, waits and mouse clicks, started
+by a hotkey or a knob gesture. Press **Record** to capture keys and the pauses
+between them, then edit the steps. It can repeat a set number of times or until
+you stop it with its hotkey or Esc.
+
+Macro text sits unencrypted in the config file, so keep passwords out of it.
+Some games ban macros; check before you use one there.
 
 ## Mouse mode
 
-Control the pointer from the keyboard, handy when you sit away from your desk.
-Turn it on in Settings, then press its hotkey (Ctrl+Alt+M by default) or a knob
-gesture:
+Turn it on in Settings, then press Ctrl+Alt+M (you can change this) or a knob
+gesture.
 
 | Key | What it does |
 |---|---|
@@ -78,128 +92,99 @@ gesture:
 | Right Shift | Right click |
 | End | Middle click |
 | Page Up / Page Down | Scroll |
-| Home (hold) | Move slowly, for precise aiming |
+| Home (hold) | Move slowly |
 | Esc | Leave mouse mode |
 
-All other keys keep typing as usual. Mouse mode turns itself off after 10
-minutes without use, so the arrow keys never stay taken over by accident.
+Other keys keep typing. Mouse mode turns itself off after 10 idle minutes, in
+case you forget it's on.
 
 ## Click hints
 
-No more pressing Tab over and over to reach a button. Turn it on in Settings,
-press its hotkey (Ctrl+Alt+H by default) or a knob gesture, and a small letter
-label appears on everything clickable in the app in front. Type a label to
-click it, or hold Shift on the last letter to right-click. Esc or any other key
-closes the labels. It works in most apps and in Chrome and Edge.
-You can change how the labels look in Settings: colours, size, roundness,
-opacity, position and shadow, or pick a ready-made style.
+Turn it on in Settings, then press Ctrl+Alt+H (you can change this) or a knob
+gesture. Everything clickable in the app in front gets a small letter label.
+Type a label to click it, or hold Shift on the last letter to right-click. Esc
+or any other key closes the labels.
+
+It works in most apps and in Chrome and Edge. The look is up to you: pick a
+preset or set the colours, size, roundness, opacity, position and shadow.
 
 ## Lighting
 
-Save lighting layouts with an effect, a colour or colour cycling, brightness
-and speed, then click **Apply to keyboard** to use one. It comes with seven
-layouts and 19 effects. The lights only change when you apply a layout.
+Save layouts with an effect, a colour or colour cycling, brightness and speed.
+There are seven to start from and 19 effects. The lights only change when you
+click **Apply to keyboard**.
 
 ![The Lighting page in Settings, with a list of saved layouts and the controls for one of them](docs/images/settings-lighting.png)
 
-## Supported keyboards
+## Which keyboards work
 
-| Keyboard | Connection | Status |
-|---|---|---|
-| AJAZZ AK820 MAX Ultra | 2.4 GHz dongle | Supported and tested |
-| | USB cable | Not tested yet |
-| | Bluetooth | Not tested yet |
-| Other AK820 MAX versions | | Not tested; some use different hardware |
+Tested on one AK820 MAX Ultra over its 2.4 GHz receiver. The USB cable and
+Bluetooth aren't tested yet.
 
-**Have a different AK820 MAX?** This program has only been tested on the MAX
-Ultra. Other versions sold as AK820 MAX can use different hardware, and it
-only recognises a 2.4 GHz receiver that Windows sees as `VID_0C45&PID_FEFC`.
-With the receiver plugged in, this PowerShell command lists it if you have
-that one:
+Other keyboards sold as AK820 MAX can use different hardware. The program only
+recognises a receiver that Windows sees as `VID_0C45&PID_FEFC`. With yours
+plugged in, this command lists it if it's the right one:
 
 ```powershell
 Get-PnpDevice -PresentOnly | Where-Object InstanceId -match 'VID_0C45&PID_FEFC'
 ```
 
-You can also just install it: if the tray icon stays grey with a red badge
-while the receiver is plugged in, your version isn't supported yet.
-
-Windows 10 or 11, 64-bit. When the knob isn't recognised (for example over
-the cable), the program does nothing and the knob keeps its normal volume
-function.
-
-## Install
-
-1. Click **Download for Windows** above. Your browser downloads
-   [`ak820-custom-knob-setup.exe`](https://github.com/Enceladus00/ak820-max-ultra-toolbox/releases/latest/download/ak820-custom-knob-setup.exe).
-2. Open the downloaded file. If Windows SmartScreen warns about an unknown
-   publisher, choose *More info → Run anyway*; the program isn't code-signed
-   yet. See [Privacy](#privacy) for exactly what it does.
-3. Click through the installer. It needs no administrator rights.
-4. At the end, the knob program starts and Settings opens. Turn the knob.
-
-Prefer not to install? The
-[Releases](https://github.com/Enceladus00/ak820-max-ultra-toolbox/releases) page
-also has `ak820-custom-knob-portable.zip`: unpack it anywhere and run
-`ak820-custom-knob.exe`, keeping both exe files in the same folder.
-
-## Use
-
-The program runs in the notification area (tray), next to the clock.
-
-* **Click** the tray icon to open **Settings**.
-* **Right-click** it for the menu: the current mode, *Paused* (the knob
-  works as normal until you turn it back on), *Start with Windows*,
-  Settings, the config file, the log folder, and Quit.
-
-In **Settings**:
-
-* **Modes:** what the knob does in each mode, with and without a modifier
-  held. To record a key, click the key field and press the key or
-  combination.
-* **Apps:** which modes the knob has in which app. Entries are checked from
-  the top; the first that matches the app in front wins.
-* **Macros:** record or build macros, and give them a hotkey.
-* **Mouse & hints:** turn on mouse mode and click hints and set their hotkeys.
-* **Lighting:** saved lighting layouts (effect, colour, brightness, speed).
-  Edit them, then click **Apply to keyboard**. It comes with seven, and it
-  works over the 2.4 GHz receiver.
-* **General:** Start with Windows, theme (light, dark, or same as Windows),
-  language, long-press and double-press timing, and Restore defaults.
-
-Changes apply as soon as you save. There's no need to restart the program.
-
-### Config file
-
-Settings are stored in `%APPDATA%\ak820-custom-knob\config.toml`. You can
-also edit this file by hand; the program picks up saved changes right away,
-and keeps the last working settings if the file has an error.
-[`default-config.toml`](crates/knob-core/src/default-config.toml) describes
-every option.
+You can also just install it. If the tray icon stays grey with a red badge
+while the receiver is plugged in, your version isn't supported yet. The program
+then does nothing and the knob goes on controlling volume.
 
 ## Privacy
 
-To see the knob, the program installs a Windows keyboard hook, which lets it
-see every key press. By default it only acts on the volume and mute keys and
-lets everything else through untouched. If you turn on macros, mouse mode or
-click hints, it also acts on the keys those features use. It doesn't record or
-store what you type, its log files contain no key presses, and it never
-connects to the internet. Macro recording only captures keys pressed inside
-the Settings window while you are recording.
+To see the knob, the program installs a Windows keyboard hook, which means it
+sees every key press. By default it only acts on the volume and mute keys and
+passes everything else through. If you turn on macros, mouse mode or click
+hints, it also acts on the keys those use.
+
+It doesn't record what you type, its logs contain no key presses, and it never
+connects to the internet. Macro recording only captures keys pressed inside the
+Settings window while you're recording.
 
 ## How it works
 
-The knob sends the same volume-up / volume-down / mute signals as Fn+F2,
-Fn+F3 and Fn+F4. The difference is timing: a knob step is released after
-about 5 ms, while a finger holds a key for 70 ms or more. The program holds
-back volume keys for up to 30 ms. If one came from the AK820 and was released
-by then, it's the knob. Otherwise it's a real key press, which is passed on
-unchanged.
+The knob sends the same volume-up, volume-down and mute signals as Fn+F2, Fn+F3
+and Fn+F4. The difference is timing: a knob step is released after about 5 ms,
+and a finger holds a key for 70 ms or more. The program holds volume keys back
+for up to 30 ms. If one came from the AK820 and was already released, it's the
+knob. Otherwise it's a real key press and goes through unchanged.
 
-If the program ever fails, the knob falls back to its normal volume
-function instead of going silent. Details are in [docs/design.md](docs/design.md)
-and the measurements behind them in
-[docs/probe-findings.md](docs/probe-findings.md).
+If the program fails, the knob falls back to volume instead of going dead.
+[docs/design.md](docs/design.md) has the details and
+[docs/probe-findings.md](docs/probe-findings.md) has the measurements.
+
+## Questions
+
+**How do I remap the knob on the AJAZZ AK820 MAX Ultra?**
+Install this, open Settings, and on the Modes page pick what turn, press and
+long press should do. It applies as soon as you save.
+
+**Do I need the official AJAZZ software or driver?**
+No.
+
+**Does it change my keyboard's firmware?**
+No. The knob functions all run on your PC. Lighting settings are sent to the
+keyboard only when you click *Apply to keyboard*, and they don't touch the
+firmware.
+
+**Does it work with the regular AK820 MAX, AK820 Pro, MAX Plus or MAX HE?**
+It's only been tested on the MAX Ultra. See
+[Which keyboards work](#which-keyboards-work) to check yours.
+
+**Why doesn't it work in an app I run as administrator?**
+Windows doesn't let normal programs control apps running as administrator.
+Hotkeys, mouse mode and click hints work everywhere else.
+
+## Config file
+
+Settings live in `%APPDATA%\ak820-custom-knob\config.toml`, and each save keeps
+the previous one as `config.toml.bak`. You can edit the file by hand: the
+program picks up changes right away and keeps the last working settings if the
+file has an error. [`default-config.toml`](crates/knob-core/src/default-config.toml)
+describes every option.
 
 ## Uninstall
 
@@ -209,27 +194,23 @@ off *Start with Windows* in the tray menu, quit, and delete the folder.
 
 ## Building from source
 
-Needs [Rust](https://rustup.rs) (stable, with the MSVC toolchain) on
-Windows.
+You need [Rust](https://rustup.rs) (stable, MSVC toolchain) on Windows.
 
 ```
 cargo build --release -p ak820-custom-knob -p knob-settings
 ```
 
-The two exe files end up in `target\release`. `cargo test --workspace` runs
-the tests, including a replay of a real recording from the keyboard.
+The two exe files end up in `target\release`. `cargo test --workspace` runs the
+tests, including a replay of a real recording from the keyboard.
 
-To build the installer and portable zip into `dist\`, install
-[Inno Setup 6](https://jrsoftware.org/isinfo.php) and run:
+For the installer and portable zip, install
+[Inno Setup 6](https://jrsoftware.org/isinfo.php) and run this. Published
+releases are built by GitHub Actions instead; see
+[docs/releasing.md](docs/releasing.md).
 
 ```
 powershell -ExecutionPolicy Bypass -File tools\build-release.ps1
 ```
-
-Published releases are built by GitHub Actions instead; see
-[docs/releasing.md](docs/releasing.md).
-
-The workspace:
 
 | Crate | What it is |
 |---|---|
@@ -240,75 +221,22 @@ The workspace:
 | `knob-settings` | The Settings window ([Tauri](https://tauri.app)) |
 | `knob-probe` | A diagnostic tool that logs what the keyboard sends |
 
-## FAQ
-
-**How do I remap the knob on the AJAZZ AK820 MAX Ultra?**
-Install the program, open Settings, and on the **Modes** page choose what
-turning, pressing and long-pressing the knob should do. Save, and the knob
-uses the new functions right away.
-
-**Can I bind a keyboard shortcut to the AK820 MAX Ultra knob?**
-Yes. Choose *Press keys*, click the key field and press any key or
-combination. Turning clockwise and counter-clockwise can each have their own.
-
-**Can the knob do different things in different apps?**
-Yes. The **Apps** page sets which modes the knob has in each app, and it
-switches automatically when another app comes to the front.
-
-**Can I use the AK820 MAX Ultra as a mouse?**
-Yes. Turn on **Mouse mode** and the arrow keys move the pointer, with the keys
-next to them for clicking and scrolling.
-
-**Can I record macros on the AK820 MAX Ultra?**
-Yes. On the **Macros** page press **Record**, press your keys, then give the
-macro a hotkey or bind it to the knob.
-
-**Why doesn't it work in an app I run as administrator?**
-Windows doesn't let normal programs control apps running as administrator.
-Hotkeys, mouse mode and click hints work everywhere else.
-
-**Do I need the official AJAZZ software or driver?**
-No. This program works on its own.
-
-**Does it change my keyboard's firmware?**
-No. The knob functions all run on your PC and write nothing to the keyboard.
-Lighting settings are sent to the keyboard only when you click *Apply to
-keyboard*, and they don't touch the firmware.
-
-**Does it work with the regular AK820 MAX, AK820 Pro, MAX Plus or MAX HE?**
-It has only been tested on an AK820 MAX Ultra over its 2.4 GHz receiver. Other
-models and versions use different hardware or haven't been tested. If yours
-isn't recognised, the program does nothing and the knob keeps working normally.
-
 ## Contributing
 
-Everyone is more than welcome to build on this project, with features for
-the knob or for anything else on the keyboard. Have an idea? Open an issue
-to talk it through, or send a pull request. Bug reports are just as welcome.
-
-To add a language, see [docs/translating.md](docs/translating.md). If your
-knob isn't recognised, for example over the cable or Bluetooth, a log from
-`knob-probe` helps add support for it.
-
-## Notes
-
-**Fn+F4 (mute) counts as a knob press.** The keyboard sends exactly the same
-signal for both, and both are finger presses of similar length, so they
-can't be told apart. In a mode where the press does something else (Scroll
-mode: middle click), Fn+F4 does that too.
+Issues and pull requests are welcome, for the knob or anything else on the
+keyboard. To add a language, see [docs/translating.md](docs/translating.md). If
+your knob isn't recognised, a log from `knob-probe` helps add support for it.
 
 ## Unofficial, free and open source
 
-AK820 MAX Ultra Toolbox is a community project. It isn't made, endorsed or
-supported by AJAZZ.
+This is a community project. It isn't made, endorsed or supported by AJAZZ.
 
-All of the code is public, so anyone can read exactly what it does, and
-releases are built by GitHub Actions from that public code
+All of the code is public, and releases are built from it by GitHub Actions
 ([how to check a download](docs/releasing.md#checking-a-download)).
 
-As the license says, it is provided as-is, without warranty, and the author
-isn't responsible for problems that come from using it. If something doesn't
-work, please [open an issue](https://github.com/Enceladus00/ak820-max-ultra-toolbox/issues).
+As the license says, it comes as-is, without warranty, and the author isn't
+responsible for problems that come from using it. If something doesn't work,
+please [open an issue](https://github.com/Enceladus00/ak820-max-ultra-toolbox/issues).
 
 ## License
 
