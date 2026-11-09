@@ -3,7 +3,8 @@
 Free, open-source software for the knob on the **AJAZZ AK820 MAX** and
 **AK820 MAX Ultra** keyboards. It gives the knob new jobs on Windows:
 scrolling, zooming, media control, the volume of a single app, any key
-combination, and different functions in different apps.
+combination, and different functions in different apps. It can also set the
+keyboard's lighting.
 
 Only the knob changes. Every other key, including Fn+F2 / Fn+F3 for volume,
 works exactly as before.
@@ -50,6 +51,14 @@ there.
 
 **Double press** is available too, for rarely needed actions. Modes that use
 it make a single press wait a moment to see whether a second one follows.
+
+## Lighting
+
+Save lighting layouts with an effect, a colour or colour cycling, brightness
+and speed, then click **Apply to keyboard** to use one. It comes with seven
+layouts and 19 effects. The lights only change when you apply a layout.
+
+![The Lighting page in Settings, with a list of saved layouts and the controls for one of them](docs/images/settings-lighting.png)
 
 ## Supported keyboards
 
