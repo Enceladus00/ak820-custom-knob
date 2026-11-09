@@ -1,4 +1,4 @@
-//! ak820-custom-knob: gives the AJAZZ AK820 MAX knob custom, per-app
+//! ak820-custom-knob: gives the AJAZZ AK820 MAX Ultra knob custom, per-app
 //! functions, without changing any other key.
 //!
 //! Threads:

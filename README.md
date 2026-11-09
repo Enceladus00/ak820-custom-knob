@@ -1,7 +1,7 @@
 # AK820 Custom Knob
 
-Free, open-source software for the knob on the **AJAZZ AK820 MAX** and
-**AK820 MAX Ultra** keyboards. It gives the knob new jobs on Windows:
+Free, open-source software for the knob on the **AJAZZ AK820 MAX Ultra**
+keyboard. It gives the knob new jobs on Windows:
 scrolling, zooming, media control, the volume of a single app, any key
 combination, and different functions in different apps. It can also set the
 keyboard's lighting.
@@ -66,14 +66,16 @@ layouts and 19 effects. The lights only change when you apply a layout.
 
 | Keyboard | Connection | Status |
 |---|---|---|
-| AJAZZ AK820 MAX (tested on a MAX Ultra) | 2.4 GHz dongle | Supported |
+| AJAZZ AK820 MAX Ultra | 2.4 GHz dongle | Supported and tested |
 | | USB cable | Not tested yet |
 | | Bluetooth | Not tested yet |
+| Other AK820 MAX versions | | Not tested; some use different hardware |
 
-**Which AK820 MAX do you have?** Different versions are sold under the same
-name and use different hardware. This program works over a 2.4 GHz receiver
-that Windows sees as `VID_0C45&PID_FEFC`. With the receiver plugged in, this
-PowerShell command lists it if you have the supported one:
+**Have a different AK820 MAX?** This program has only been tested on the MAX
+Ultra. Other versions sold as AK820 MAX can use different hardware, and it
+only recognises a 2.4 GHz receiver that Windows sees as `VID_0C45&PID_FEFC`.
+With the receiver plugged in, this PowerShell command lists it if you have
+that one:
 
 ```powershell
 Get-PnpDevice -PresentOnly | Where-Object InstanceId -match 'VID_0C45&PID_FEFC'
@@ -196,12 +198,12 @@ The workspace:
 
 ## FAQ
 
-**How do I remap the knob on the AJAZZ AK820 MAX?**
+**How do I remap the knob on the AJAZZ AK820 MAX Ultra?**
 Install the program, open Settings, and on the **Modes** page choose what
 turning, pressing and long-pressing the knob should do. Save, and the knob
 uses the new functions right away.
 
-**Can I bind a keyboard shortcut to the AK820 MAX knob?**
+**Can I bind a keyboard shortcut to the AK820 MAX Ultra knob?**
 Yes. Choose *Press keys*, click the key field and press any key or
 combination. Turning clockwise and counter-clockwise can each have their own.
 
@@ -217,9 +219,10 @@ No. The knob functions all run on your PC and write nothing to the keyboard.
 Lighting settings are sent to the keyboard only when you click *Apply to
 keyboard*, and they don't touch the firmware.
 
-**Does it work with the AK820 Pro, AK820 MAX Plus or AK820 MAX HE?**
-It has been tested on an AK820 MAX Ultra over its 2.4 GHz receiver. Other
-models and versions use different hardware or haven't been tested.
+**Does it work with the regular AK820 MAX, AK820 Pro, MAX Plus or MAX HE?**
+It has only been tested on an AK820 MAX Ultra over its 2.4 GHz receiver. Other
+models and versions use different hardware or haven't been tested. If yours
+isn't recognised, the program does nothing and the knob keeps working normally.
 
 ## Contributing
 

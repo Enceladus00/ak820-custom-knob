@@ -22,5 +22,5 @@ pub const MARKER: usize = 0x4B4E_4F42; // "KNOB"
 
 /// Device-path fragments of supported keyboards (Raw Input device names).
 pub const KNOWN_DEVICES: &[&str] = &[
-    "VID_0C45&PID_FEFC", // AK820 MAX, 2.4 GHz dongle
+    "VID_0C45&PID_FEFC", // AK820 MAX Ultra, 2.4 GHz dongle
 ];

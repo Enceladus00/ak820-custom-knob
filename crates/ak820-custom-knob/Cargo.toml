@@ -1,6 +1,6 @@
 [package]
 name = "ak820-custom-knob"
-description = "Background program that gives the AJAZZ AK820 MAX knob custom, per-app functions"
+description = "Background program that gives the AJAZZ AK820 MAX Ultra knob custom, per-app functions"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
