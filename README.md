@@ -19,6 +19,29 @@ Fn+F2 and Fn+F3 for volume, and the extras stay off until you turn them on.
 This is an [unofficial community project](#unofficial-free-and-open-source),
 not made by AJAZZ. It's free and all of the code is here.
 
+<table>
+<tr>
+<td width="33%"><b>Any shortcut on the knob</b><br>A different one per direction</td>
+<td width="33%"><b>Per-app modes</b><br>Switches with the app in front</td>
+<td width="33%"><b>Modifier layers</b><br>New jobs while holding Ctrl, Shift, Alt or Win</td>
+</tr>
+<tr>
+<td><b>Volume</b><br>System-wide or one app at a time</td>
+<td><b>Scroll and zoom</b><br>Up, down or sideways</td>
+<td><b>Media controls</b><br>Play, pause, next and previous</td>
+</tr>
+<tr>
+<td><b>Mouse clicks</b><br>Left, middle or right on the knob</td>
+<td><b>Long and double press</b><br>More actions on one knob</td>
+<td><b>Macros</b><br>Record keys, text, waits and clicks</td>
+</tr>
+<tr>
+<td><b>Mouse mode</b><br>Move the pointer with the arrow keys</td>
+<td><b>Click hints</b><br>Click anything by typing its letter</td>
+<td><b>Lighting layouts</b><br>7 layouts and 19 effects</td>
+</tr>
+</table>
+
 ![The Modes page in Settings, showing what the knob does when turned, pressed and long-pressed](docs/images/settings-modes.png)
 
 ## Install

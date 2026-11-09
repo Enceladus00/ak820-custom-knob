@@ -96,6 +96,9 @@
 
     .shot { display: block; width: 100%; height: auto; border-radius: 10px; }
     .hero-shot { margin: 58px 0 0; }
+    .functions { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; margin: 28px 0 0; padding: 1px; border-radius: 8px; background: var(--line); list-style: none; overflow: hidden; }
+    .functions li { padding: 15px 18px 16px; background: var(--bg); font-size: 14.5px; line-height: 1.4; color: var(--soft); }
+    .functions b { display: block; margin-bottom: 2px; color: var(--ink); font-size: 16px; font-weight: 600; }
     section { padding: 92px 0 0; }
     .side { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 56px; align-items: start; }
     .side.flip { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
@@ -141,9 +144,12 @@
       .side, .side.flip, .trio, .questions, footer { grid-template-columns: minmax(0, 1fr); gap: 26px; }
       .side.flip > :first-child { order: 0; }
       .trio { gap: 56px; }
+      .functions { grid-template-columns: repeat(3, minmax(0, 1fr)); }
       .bar nav a:not(:last-child) { display: none; }
     }
     @media (max-width: 620px) {
+      .functions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .functions li { padding: 12px 13px 13px; }
       .modes thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
       .modes, .modes tbody, .modes tr, .modes th, .modes td { display: block; }
       .modes tr { padding: 14px 0; border-bottom: 1px solid var(--line); }
@@ -176,6 +182,21 @@
       <p class="soft small">Windows 10 or 11, 64-bit. Free, with no account. An unofficial community project, not made by AJAZZ.</p>
 
       <img class="shot hero-shot" src="images/settings-modes.png" width="2240" height="1414" alt="The Modes page in Settings, showing what the knob does when turned, pressed and long-pressed">
+
+      <ul class="functions" aria-label="What the software does">
+        <li><b>Any shortcut on the knob</b>A different one per direction</li>
+        <li><b>Per-app modes</b>Switches with the app in front</li>
+        <li><b>Modifier layers</b>New jobs while holding Ctrl, Shift, Alt or Win</li>
+        <li><b>Volume</b>System-wide or one app at a time</li>
+        <li><b>Scroll and zoom</b>Up, down or sideways</li>
+        <li><b>Media controls</b>Play, pause, next and previous</li>
+        <li><b>Mouse clicks</b>Left, middle or right on the knob</li>
+        <li><b>Long and double press</b>More actions on one knob</li>
+        <li><b>Macros</b>Record keys, text, waits and clicks</li>
+        <li><b>Mouse mode</b>Move the pointer with the arrow keys</li>
+        <li><b>Click hints</b>Click anything by typing its letter</li>
+        <li><b>Lighting layouts</b>7 layouts and 19 effects</li>
+      </ul>
 
       <section id="knob">
         <h2>What you can bind to the knob</h2>
