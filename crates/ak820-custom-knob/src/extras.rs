@@ -2,6 +2,7 @@
 //! their own thread so that a long macro or a slow app never delays the knob.
 
 use std::collections::HashSet;
+use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
@@ -25,6 +26,10 @@ pub enum ExtrasMsg {
     RunMacro(String),
     ToggleMouse,
     ShowHints,
+    /// The Pause menu item was toggled.
+    Paused(bool),
+    /// Another window came to the front.
+    Foreground,
 }
 
 static SENDER: OnceLock<Sender<ExtrasMsg>> = OnceLock::new();
@@ -40,16 +45,41 @@ pub fn start(config: Config) {
     let _ = SENDER.set(tx);
     thread::Builder::new()
         .name("extras".into())
-        .spawn(move || Extras::new(config).run(rx))
+        .spawn(move || {
+            let result = catch_unwind(AssertUnwindSafe(|| Extras::new(config).run(rx)));
+            if result.is_err() {
+                log::error!("extras crashed; arrow keys and hotkeys are back to normal");
+            }
+            release_keys();
+        })
         .expect("spawn extras thread");
 }
 
+/// Whatever happens to this thread, no key stays taken over.
+fn release_keys() {
+    input::set_mouse_active(false);
+    input::set_hints_active(false);
+    input::set_macro_running(false);
+    input::set_hotkeys(Vec::new());
+    MOUSE_ON.store(false, Ordering::SeqCst);
+    ui::notify(UiEvent::HintsHide);
+}
+
 const TICK: Duration = Duration::from_millis(8);
-const HINTS_TIMEOUT: Duration = Duration::from_secs(20);
+/// Forgetting mouse mode is on would leave the arrow keys taken over.
+const MOUSE_IDLE_OFF: Duration = Duration::from_secs(10 * 60);
+const HINTS_TIMEOUT: Duration = Duration::from_secs(15);
 const STEP_GAP: Duration = Duration::from_millis(15);
 const MODIFIER_RELEASE_WAIT: Duration = Duration::from_millis(1500);
 
 static MACRO_RUNNING: AtomicBool = AtomicBool::new(false);
+static MOUSE_ON: AtomicBool = AtomicBool::new(false);
+
+/// For the tray tooltip.
+pub fn mouse_on() -> bool {
+    MOUSE_ON.load(Ordering::SeqCst)
+}
+
 static MACRO_CANCEL: AtomicBool = AtomicBool::new(false);
 
 struct HintSession {
@@ -67,6 +97,7 @@ struct Extras {
     buttons_held: HashSet<MouseButtonKey>,
     last_tick: Instant,
     hints: Option<HintSession>,
+    mouse_last_use: Instant,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
@@ -99,6 +130,7 @@ impl Extras {
             buttons_held: HashSet::new(),
             last_tick: Instant::now(),
             hints: None,
+            mouse_last_use: Instant::now(),
         };
         extras.install_hotkeys();
         extras
@@ -129,12 +161,24 @@ impl Extras {
         if self.motion.is_active() {
             return Some(TICK);
         }
-        self.hints
+        let now = Instant::now();
+        let hints = self
+            .hints
             .as_ref()
-            .map(|h| h.deadline.saturating_duration_since(Instant::now()))
+            .map(|h| h.deadline.saturating_duration_since(now));
+        let idle = self
+            .mouse_on
+            .then(|| (self.mouse_last_use + MOUSE_IDLE_OFF).saturating_duration_since(now));
+        match (hints, idle) {
+            (Some(a), Some(b)) => Some(a.min(b)),
+            (a, b) => a.or(b),
+        }
     }
 
     fn tick(&mut self) {
+        if self.mouse_on && self.mouse_last_use.elapsed() >= MOUSE_IDLE_OFF {
+            self.set_mouse(false);
+        }
         if self
             .hints
             .as_ref()
@@ -170,6 +214,14 @@ impl Extras {
                 None => log::warn!("macro '{name}' not found"),
             },
             ExtrasMsg::ToggleMouse => self.set_mouse(!self.mouse_on),
+            ExtrasMsg::Paused(paused) => {
+                if paused {
+                    self.set_mouse(false);
+                    self.end_hints();
+                    MACRO_CANCEL.store(true, Ordering::SeqCst);
+                }
+            }
+            ExtrasMsg::Foreground => self.end_hints(),
             ExtrasMsg::ShowHints => self.show_hints(),
             ExtrasMsg::Router(event) => self.router_event(event),
         }
@@ -191,7 +243,11 @@ impl Extras {
             }
             RouterEvent::Mouse { control, down } => self.mouse_control(control, down),
             RouterEvent::MouseExit => self.set_mouse(false),
-            RouterEvent::HintChar(c) => self.hint_char(c),
+            RouterEvent::HintChar {
+                letter,
+                right_click,
+            } => self.hint_char(letter, right_click),
+            RouterEvent::MacroStop => MACRO_CANCEL.store(true, Ordering::SeqCst),
             RouterEvent::HintBack => {
                 if let Some(session) = &mut self.hints {
                     session.typed.pop();
@@ -236,6 +292,9 @@ impl Extras {
         }
         self.mouse_on = on;
         input::set_mouse_active(on);
+        MOUSE_ON.store(on, Ordering::SeqCst);
+        self.mouse_last_use = Instant::now();
+        ui::notify(UiEvent::KeyboardChanged); // refreshes the tray tooltip
         if !on {
             self.motion.clear();
             for key in self.buttons_held.drain() {
@@ -254,6 +313,7 @@ impl Extras {
     }
 
     fn mouse_control(&mut self, control: MouseControl, down: bool) {
+        self.mouse_last_use = Instant::now();
         if self.motion.set(control, down) {
             if !self.mouse_on {
                 self.motion.clear();
@@ -306,7 +366,7 @@ impl Extras {
         });
     }
 
-    fn hint_char(&mut self, c: char) {
+    fn hint_char(&mut self, c: char, right_click: bool) {
         let Some(session) = &mut self.hints else {
             return;
         };
@@ -318,7 +378,11 @@ impl Extras {
         if let Some(index) = session.labels.iter().position(|l| *l == typed) {
             let (x, y) = session.targets[index].center();
             self.end_hints();
-            output::click_at(x, y);
+            if right_click {
+                output::right_click_at(x, y);
+            } else {
+                output::click_at(x, y);
+            }
             return;
         }
         session.typed = typed.clone();
@@ -341,16 +405,24 @@ fn start_macro(item: MacroDef) {
         return;
     }
     MACRO_CANCEL.store(false, Ordering::SeqCst);
+    input::set_macro_running(true);
     let spawned = thread::Builder::new().name("macro".into()).spawn(move || {
         // The hotkey's own Ctrl or Alt must not combine with what the macro presses.
         output::wait_modifiers_released(MODIFIER_RELEASE_WAIT);
-        run_macro(&item);
-        MACRO_RUNNING.store(false, Ordering::SeqCst);
+        if catch_unwind(AssertUnwindSafe(|| run_macro(&item))).is_err() {
+            log::error!("macro '{}' crashed", item.name);
+        }
+        finish_macro();
     });
     if let Err(e) = spawned {
         log::warn!("macro: {e}");
-        MACRO_RUNNING.store(false, Ordering::SeqCst);
+        finish_macro();
     }
+}
+
+fn finish_macro() {
+    input::set_macro_running(false);
+    MACRO_RUNNING.store(false, Ordering::SeqCst);
 }
 
 fn cancelled() -> bool {
@@ -359,7 +431,12 @@ fn cancelled() -> bool {
 
 fn run_macro(item: &MacroDef) {
     log::info!("macro: {}", item.name);
-    for _ in 0..item.repeat {
+    let rounds = if item.until_stopped {
+        u32::MAX
+    } else {
+        item.repeat
+    };
+    for _ in 0..rounds {
         for step in &item.steps {
             if cancelled() {
                 return;

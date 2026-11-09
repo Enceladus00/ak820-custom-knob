@@ -52,9 +52,18 @@ pub enum MouseControl {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RouterEvent {
     Hotkey(HotkeyId),
-    Mouse { control: MouseControl, down: bool },
+    Mouse {
+        control: MouseControl,
+        down: bool,
+    },
     MouseExit,
-    HintChar(char),
+    /// A letter of a label. With Shift held, the pick right-clicks.
+    HintChar {
+        letter: char,
+        right_click: bool,
+    },
+    /// Esc while a macro runs.
+    MacroStop,
     HintBack,
     HintCancel,
 }
@@ -108,6 +117,8 @@ pub struct Router {
     hotkeys: Vec<Hotkey>,
     mouse_active: bool,
     hints_active: bool,
+    macro_running: bool,
+    hotkeys_suspended: bool,
     /// Keys whose press was swallowed, so the release is swallowed too.
     swallowed: Vec<u16>,
 }
@@ -121,6 +132,16 @@ impl Router {
         self.mouse_active = active;
     }
 
+    pub fn set_macro_running(&mut self, running: bool) {
+        self.macro_running = running;
+    }
+
+    /// While suspended no hotkey fires, so that a hotkey can be recorded in
+    /// Settings without setting itself off.
+    pub fn set_hotkeys_suspended(&mut self, suspended: bool) {
+        self.hotkeys_suspended = suspended;
+    }
+
     pub fn set_hints_active(&mut self, active: bool) {
         self.hints_active = active;
     }
@@ -130,6 +151,7 @@ impl Router {
         self.hotkeys.is_empty()
             && !self.mouse_active
             && !self.hints_active
+            && !self.macro_running
             && self.swallowed.is_empty()
     }
 
@@ -174,12 +196,19 @@ impl Router {
 
     fn press(&self, key: KeyInfo) -> Decision {
         if self.hints_active {
-            return Self::hint_key(key.vk);
+            return Self::hint_key(key);
         }
-        if let Some(hotkey) = self
-            .hotkeys
-            .iter()
-            .find(|h| h.vk == key.vk && h.mods == key.mods)
+        if self.macro_running && key.vk == VK_ESC {
+            return Decision {
+                swallow: true,
+                event: Some(RouterEvent::MacroStop),
+            };
+        }
+        if !self.hotkeys_suspended
+            && let Some(hotkey) = self
+                .hotkeys
+                .iter()
+                .find(|h| h.vk == key.vk && h.mods == key.mods)
         {
             return Decision {
                 swallow: true,
@@ -207,19 +236,31 @@ impl Router {
         }
     }
 
-    /// While labels are on screen, typing picks a label and nothing reaches
-    /// the app. Modifiers pass so that they can't get stuck.
-    fn hint_key(vk: u16) -> Decision {
-        let event = match vk {
-            VK_ESC => Some(RouterEvent::HintCancel),
-            VK_BACKSPACE => Some(RouterEvent::HintBack),
-            0x41..=0x5A => Some(RouterEvent::HintChar(vk as u8 as char)),
-            _ if is_modifier(vk) => return PASS,
-            _ => None,
+    /// While labels are on screen, letters pick a label. Anything else closes
+    /// them and still does what it normally does, so that Alt+Tab, Ctrl+C or
+    /// an arrow key is never lost.
+    fn hint_key(key: KeyInfo) -> Decision {
+        if is_modifier(key.vk) {
+            return PASS;
+        }
+        let shortcut = key.mods.ctrl || key.mods.alt || key.mods.win;
+        let event = match key.vk {
+            VK_ESC => RouterEvent::HintCancel,
+            VK_BACKSPACE if !shortcut => RouterEvent::HintBack,
+            0x41..=0x5A if !shortcut => RouterEvent::HintChar {
+                letter: key.vk as u8 as char,
+                right_click: key.mods.shift,
+            },
+            _ => {
+                return Decision {
+                    swallow: false,
+                    event: Some(RouterEvent::HintCancel),
+                };
+            }
         };
         Decision {
             swallow: true,
-            event,
+            event: Some(event),
         }
     }
 }
@@ -382,26 +423,83 @@ mod tests {
         assert_eq!(router.handle(press(0x25)), PASS);
     }
 
+    fn hint_letter(letter: char, right_click: bool) -> Option<RouterEvent> {
+        Some(RouterEvent::HintChar {
+            letter,
+            right_click,
+        })
+    }
+
     #[test]
-    fn hints_take_letters_and_block_other_keys() {
+    fn hints_take_letters_backspace_and_escape() {
         let mut router = Router::default();
         router.set_hints_active(true);
-        assert_eq!(
-            router.handle(press(0x41)).event,
-            Some(RouterEvent::HintChar('A'))
-        );
+        let letter = router.handle(press(0x41));
+        assert!(letter.swallow);
+        assert_eq!(letter.event, hint_letter('A', false));
         assert_eq!(
             router.handle(press(VK_BACKSPACE)).event,
             Some(RouterEvent::HintBack)
         );
-        assert_eq!(
-            router.handle(press(VK_ESC)).event,
-            Some(RouterEvent::HintCancel)
-        );
-        let digit = router.handle(press(0x31));
-        assert!(digit.swallow);
-        assert_eq!(digit.event, None);
+        let escape = router.handle(press(VK_ESC));
+        assert!(escape.swallow);
+        assert_eq!(escape.event, Some(RouterEvent::HintCancel));
         assert_eq!(router.handle(press(0xA2)), PASS);
+    }
+
+    #[test]
+    fn shift_on_a_label_means_right_click() {
+        let mut router = Router::default();
+        router.set_hints_active(true);
+        let shifted = KeyInfo {
+            mods: Modifiers {
+                shift: true,
+                ..Default::default()
+            },
+            ..press(0x41)
+        };
+        assert_eq!(router.handle(shifted).event, hint_letter('A', true));
+    }
+
+    #[test]
+    fn any_other_key_closes_hints_and_still_works() {
+        for key in [press(0x09), press(0x25), press(0x31), ctrl_alt(0x43)] {
+            let mut router = Router::default();
+            router.set_hints_active(true);
+            let decision = router.handle(key);
+            assert!(!decision.swallow, "{key:?}");
+            assert_eq!(decision.event, Some(RouterEvent::HintCancel));
+        }
+    }
+
+    #[test]
+    fn escape_stops_a_running_macro() {
+        let mut router = Router::default();
+        assert_eq!(router.handle(press(VK_ESC)), PASS);
+        router.handle(release(VK_ESC));
+        router.set_macro_running(true);
+        assert!(!router.is_idle());
+        let decision = router.handle(press(VK_ESC));
+        assert!(decision.swallow);
+        assert_eq!(decision.event, Some(RouterEvent::MacroStop));
+    }
+
+    #[test]
+    fn hotkeys_do_not_fire_while_suspended() {
+        let mut router = with_hotkey();
+        router.set_hotkeys_suspended(true);
+        assert_eq!(router.handle(ctrl_alt(0x4D)), PASS);
+        router.handle(release(0x4D));
+        router.set_hotkeys_suspended(false);
+        assert!(router.handle(ctrl_alt(0x4D)).swallow);
+    }
+
+    #[test]
+    fn mouse_mode_still_works_while_hotkeys_are_suspended() {
+        let mut router = Router::default();
+        router.set_mouse_active(true);
+        router.set_hotkeys_suspended(true);
+        assert!(router.handle(press(0x25)).swallow);
     }
 
     #[test]

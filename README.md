@@ -60,8 +60,10 @@ it make a single press wait a moment to see whether a second one follows.
 
 Save a sequence of key presses, typed text, waits and mouse clicks, and start
 it with a hotkey or a knob gesture. Press **Record** to capture keys and the
-pauses between them, then edit the steps. Pressing the hotkey again while a
-macro runs stops it. Some games don't allow macros, so check their rules first.
+pauses between them, then edit the steps. A macro can repeat a set number of
+times or until stopped; press its hotkey again or Esc to stop it. Text in a
+macro is stored unencrypted in the config file, so don't put passwords in one.
+Some games don't allow macros, so check their rules first.
 
 ## Mouse mode
 
@@ -79,14 +81,16 @@ gesture:
 | Home (hold) | Move slowly, for precise aiming |
 | Esc | Leave mouse mode |
 
-All other keys keep typing as usual.
+All other keys keep typing as usual. Mouse mode turns itself off after 10
+minutes without use, so the arrow keys never stay taken over by accident.
 
 ## Click hints
 
 No more pressing Tab over and over to reach a button. Turn it on in Settings,
 press its hotkey (Ctrl+Alt+H by default) or a knob gesture, and a small letter
 label appears on everything clickable in the app in front. Type a label to
-click it, or press Esc to cancel. It works in most apps and in Chrome and Edge.
+click it, or hold Shift on the last letter to right-click. Esc or any other key
+closes the labels. It works in most apps and in Chrome and Edge.
 You can change how the labels look in Settings: colours, size, roundness,
 opacity, position and shadow, or pick a ready-made style.
 
@@ -258,6 +262,10 @@ next to them for clicking and scrolling.
 **Can I record macros on the AK820 MAX Ultra?**
 Yes. On the **Macros** page press **Record**, press your keys, then give the
 macro a hotkey or bind it to the knob.
+
+**Why doesn't it work in an app I run as administrator?**
+Windows doesn't let normal programs control apps running as administrator.
+Hotkeys, mouse mode and click hints work everywhere else.
 
 **Do I need the official AJAZZ software or driver?**
 No. This program works on its own.

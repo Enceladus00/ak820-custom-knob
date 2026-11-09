@@ -248,6 +248,14 @@ pub fn click_at(x: i32, y: i32) {
     click(MouseButton::Left);
 }
 
+/// Moves the pointer to a screen position and right-clicks there.
+pub fn right_click_at(x: i32, y: i32) {
+    unsafe {
+        let _ = SetCursorPos(x, y);
+    }
+    click(MouseButton::Right);
+}
+
 /// Types text directly, whatever the keyboard layout is.
 pub fn text(text: &str) {
     let inputs: Vec<INPUT> = text

@@ -186,6 +186,9 @@ fn tooltip() -> String {
             .map(|t| t.mode.clone())
             .unwrap_or_default()
     });
+    if crate::extras::mouse_on() {
+        return tr(Text::TooltipMouse).into();
+    }
     if knob_win::input::is_paused() {
         tr(Text::TooltipPaused).into()
     } else if !knob_win::input::keyboard_present() {
@@ -417,6 +420,7 @@ fn show_menu(hwnd: HWND) {
         match command.0 as usize {
             ID_PAUSE => {
                 knob_win::input::set_paused(!paused);
+                crate::extras::send(crate::extras::ExtrasMsg::Paused(!paused));
                 log::info!("{}", if paused { "resumed" } else { "paused" });
                 osd::show(tr(if paused {
                     Text::OsdResumed

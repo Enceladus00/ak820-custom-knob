@@ -463,6 +463,8 @@ select.special { min-height: 34px; min-width: 0; font-size: 13px; color: var(--m
 .legend td { padding: 6px 0; border-top: 1px solid var(--border); }
 .legend td:first-child { font-weight: 600; width: 42%; }
 
+.banner-action { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+
 /* Click hint appearance */
 .subhead { margin: 20px 0 4px; font-size: 14px; padding-top: 16px; border-top: 1px solid var(--border); }
 .hint-preview { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 20px; margin: 10px 0 14px; border-radius: 10px; background: linear-gradient(120deg, #dfe6f3, #c9d6ea 45%, #eef0f6); color: #1c1f24; }

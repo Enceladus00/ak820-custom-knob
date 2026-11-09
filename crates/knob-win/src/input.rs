@@ -56,6 +56,7 @@ static THREAD_ID: AtomicU32 = AtomicU32::new(0);
 static PAUSED: AtomicBool = AtomicBool::new(false);
 static ENGINE_ALIVE: AtomicBool = AtomicBool::new(true);
 static KEYBOARD_PRESENT: AtomicBool = AtomicBool::new(false);
+const SETTINGS_EXE: &str = "knob-settings.exe";
 static ROUTER: LazyLock<Mutex<Router>> = LazyLock::new(Mutex::default);
 /// Timers on the input window: a regular device rescan, and one shortly after
 /// a device change.
@@ -81,6 +82,12 @@ pub fn is_paused() -> bool {
 pub fn set_hotkeys(hotkeys: Vec<Hotkey>) {
     if let Ok(mut router) = ROUTER.lock() {
         router.set_hotkeys(hotkeys);
+    }
+}
+
+pub fn set_macro_running(running: bool) {
+    if let Ok(mut router) = ROUTER.lock() {
+        router.set_macro_running(running);
     }
 }
 
@@ -285,6 +292,10 @@ extern "system" fn foreground_proc(
 
 fn report_foreground(hwnd: HWND) {
     if let Some((pid, exe)) = process::window_process(hwnd) {
+        // A hotkey is being set up: pressing it must not also run it.
+        if let Ok(mut router) = ROUTER.lock() {
+            router.set_hotkeys_suspended(exe.eq_ignore_ascii_case(SETTINGS_EXE));
+        }
         emit(InputEvent::Foreground { pid, exe });
     }
 }

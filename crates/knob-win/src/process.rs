@@ -82,3 +82,14 @@ pub fn window_process(hwnd: HWND) -> Option<(u32, String)> {
 pub fn foreground() -> Option<(u32, String)> {
     window_process(unsafe { GetForegroundWindow() })
 }
+
+/// Whether the background program is running (its tray window exists).
+pub fn tray_running() -> bool {
+    unsafe {
+        windows::Win32::UI::WindowsAndMessaging::FindWindowW(
+            windows::core::w!("Ak820KnobTray"),
+            windows::core::PCWSTR::null(),
+        )
+        .is_ok_and(|window| !window.is_invalid())
+    }
+}

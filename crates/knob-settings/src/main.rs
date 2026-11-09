@@ -12,6 +12,8 @@ use knob_win::{autostart, paths};
 use serde::Serialize;
 use tauri::Manager;
 
+const PROJECT_URL: &str = "https://github.com/Enceladus00/ak820-max-ultra-toolbox";
+
 #[derive(Serialize)]
 struct Loaded {
     config: Config,
@@ -82,6 +84,10 @@ fn write_atomic(path: &Path, text: &str) -> std::io::Result<()> {
     if let Some(dir) = path.parent() {
         fs::create_dir_all(dir)?;
     }
+    // One step of undo, in case a save is regretted or the file was hand-edited.
+    if path.exists() {
+        let _ = fs::copy(path, path.with_extension("toml.bak"));
+    }
     let tmp = path.with_extension("toml.tmp");
     fs::write(&tmp, text)?;
     fs::rename(&tmp, path)
@@ -114,6 +120,8 @@ fn open_location(which: String) -> Result<(), String> {
             config.parent().map(Path::to_path_buf).unwrap_or_default(),
         ),
         "logs" => ("explorer.exe", paths::log_dir()),
+        "project" => ("explorer.exe", PROJECT_URL.into()),
+        "releases" => ("explorer.exe", format!("{PROJECT_URL}/releases").into()),
         other => return Err(format!("unknown location '{other}'")),
     };
     std::process::Command::new(program)
@@ -121,6 +129,35 @@ fn open_location(which: String) -> Result<(), String> {
         .spawn()
         .map(|_| ())
         .map_err(|e| e.to_string())
+}
+
+/// Whether the background program is running, and whether it can be started.
+#[derive(Serialize)]
+struct DaemonState {
+    running: bool,
+    available: bool,
+}
+
+#[tauri::command]
+fn daemon_state() -> DaemonState {
+    DaemonState {
+        running: knob_win::process::tray_running(),
+        available: autostart::daemon_exe().is_some(),
+    }
+}
+
+#[tauri::command]
+fn start_daemon() -> Result<(), String> {
+    let exe = autostart::daemon_exe().ok_or("the knob program was not found")?;
+    std::process::Command::new(exe)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn app_version() -> &'static str {
+    env!("CARGO_PKG_VERSION")
 }
 
 /// Sends a layout to the keyboard. On its own thread, because a sleeping
@@ -186,9 +223,35 @@ fn main() {
             running_apps,
             open_location,
             apply_lighting,
+            daemon_state,
+            start_daemon,
+            app_version,
             get_autostart,
             set_autostart
         ])
         .run(tauri::generate_context!())
         .expect("failed to start the settings window");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn saving_keeps_the_previous_file_as_a_backup() {
+        let dir = std::env::temp_dir().join(format!("knob-backup-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        let path = dir.join("config.toml");
+
+        write_atomic(&path, "first").unwrap();
+        assert!(!path.with_extension("toml.bak").exists());
+        write_atomic(&path, "second").unwrap();
+
+        assert_eq!(fs::read_to_string(&path).unwrap(), "second");
+        assert_eq!(
+            fs::read_to_string(path.with_extension("toml.bak")).unwrap(),
+            "first"
+        );
+        let _ = fs::remove_dir_all(&dir);
+    }
 }

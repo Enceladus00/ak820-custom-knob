@@ -41,6 +41,9 @@ registerLocale('en', 'English', {
     loadError: '<strong>Your config file has an error, so the defaults are shown.</strong> Saving replaces the file. {error}',
     problems: '<strong>Fix these before saving:</strong>',
     loadFailed: 'Could not load the settings: {error}',
+    notRunning: '<strong>The background program isn’t running</strong>, so the knob, hotkeys and macros won’t work until it’s started.',
+    start: 'Start it',
+    confirmClose: 'You have unsaved changes. Close without saving?',
   },
 
   gestures: {
@@ -87,7 +90,7 @@ registerLocale('en', 'English', {
 
   params: {
     stepUnit: '% per click',
-    linesUnit: 'lines per click',
+    linesUnit: 'scroll steps per click',
     sideways: 'Sideways',
     accelerate: 'Faster when spinning fast',
     clockwise: 'Clockwise',
@@ -165,7 +168,8 @@ registerLocale('en', 'English', {
     noHotkey: 'No hotkey',
     none: 'None',
     hotkey: 'Hotkey',
-    hotkeyHint: 'Needs Ctrl, Alt or Win, or a function key. Press it again while the macro runs to stop it.',
+    hotkeyHint: 'Needs Ctrl, Alt or Win, or a function key. Press it again, or Esc, while the macro runs to stop it.',
+    untilStopped: 'Until stopped',
     repeat: 'Repeat',
     times: 'times',
     ms: 'ms',
@@ -175,7 +179,7 @@ registerLocale('en', 'English', {
     stop: 'Stop recording',
     recording: '<strong>Recording.</strong> Press keys now; they are added as steps, with the pauses between them. Click Stop recording when you’re done.',
     noSteps: 'No steps yet. Record some, or add them by hand.',
-    note: 'Recording only captures keys pressed in this window. Some games don’t allow macros, so check their rules first.',
+    note: 'Recording only captures keys pressed in this window. Text is stored unencrypted in your config file, so don’t put passwords in a macro. Some games don’t allow macros, so check their rules first.',
     steps: { keys: 'Press keys', text: 'Type text', wait: 'Wait', click: 'Mouse click' },
   },
 
@@ -184,7 +188,7 @@ registerLocale('en', 'English', {
     toggle: 'On / off hotkey',
     toggleHint: 'Needs Ctrl, Alt or Win, or a function key. You can also bind it to a knob gesture on the Modes page.',
     mouseTitle: 'Mouse mode',
-    mouseLead: 'Move the pointer and click with the keys around the arrows. All other keys keep typing as usual.',
+    mouseLead: 'Move the pointer and click with the keys around the arrows. All other keys keep typing as usual. It turns itself off after 10 minutes without use.',
     speed: 'Top speed',
     speedHint: 'Pixels per second. Movement starts slowly and speeds up while you hold a key.',
     keys: {
@@ -197,7 +201,7 @@ registerLocale('en', 'English', {
       esc: { key: 'Esc', does: 'Leave mouse mode' },
     },
     hintsTitle: 'Click hints',
-    hintsLead: 'Puts a small letter label on everything clickable in the app in front. Type a label to click it, or press Esc to cancel. Works in most apps and browsers.',
+    hintsLead: 'Puts a small letter label on everything clickable in the app in front. Type a label to click it, or hold Shift on the last letter to right-click. Esc or any other key closes the labels. Works in most apps and browsers.',
     hintsKey: 'Show hints hotkey',
     style: {
       title: 'Label appearance',
@@ -279,6 +283,10 @@ registerLocale('en', 'English', {
     openNotepad: 'Open in Notepad',
     showFolder: 'Show folder',
     openLogs: 'Open log folder',
+    about: 'About',
+    aboutText: 'AK820 MAX Ultra Toolbox {version}. Free, open-source and unofficial.',
+    projectPage: 'Project page',
+    checkUpdates: 'Check for updates',
     startOver: 'Start over',
     startOverHint: 'Replaces everything with the built-in defaults. Nothing changes until you save.',
     restore: 'Restore defaults',
@@ -287,6 +295,7 @@ registerLocale('en', 'English', {
 
   toast: {
     saved: 'Saved. The knob uses the new settings now.',
+    savedNotRunning: 'Saved. They’ll apply when the background program is running.',
     saveFailed: 'Could not save: {error}',
     autostartFailed: 'Could not change Start with Windows: {error}',
   },

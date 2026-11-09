@@ -18,6 +18,9 @@ pub struct MacroDef {
     pub hotkey: Option<KeyCombo>,
     #[serde(default = "one")]
     pub repeat: u32,
+    /// Keep repeating until stopped, ignoring `repeat`.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub until_stopped: bool,
     pub steps: Vec<MacroStep>,
 }
 
@@ -188,6 +191,7 @@ mod tests {
             name: "Hello".into(),
             hotkey: Some(combo("Ctrl+Alt+1")),
             repeat: 1,
+            until_stopped: false,
             steps: vec![
                 MacroStep::Keys { keys: combo("Tab") },
                 MacroStep::Wait { ms: 50 },

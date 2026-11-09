@@ -2,5 +2,5 @@
   "identifier": "default",
   "description": "The settings window: core features only; app commands are allowed by default.",
   "windows": ["main"],
-  "permissions": ["core:default", "core:window:allow-set-theme"]
+  "permissions": ["core:default", "core:window:allow-set-theme", "core:window:allow-destroy"]
 }

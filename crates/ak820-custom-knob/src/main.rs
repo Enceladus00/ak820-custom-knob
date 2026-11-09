@@ -45,13 +45,16 @@ static ENGINE: OnceLock<Sender<EngineMsg>> = OnceLock::new();
 fn main() {
     i18n::set_language(AUTO_LANGUAGE); // until the config is read
     let Some(_instance) = single_instance() else {
-        unsafe {
-            MessageBoxW(
-                None,
-                &HSTRING::from(tr(Text::AlreadyRunning)),
-                &HSTRING::from(tr(Text::Tooltip)),
-                MB_OK | MB_ICONINFORMATION,
-            );
+        // Starting it again means "show me the program", not an error.
+        if !open_settings_app() {
+            unsafe {
+                MessageBoxW(
+                    None,
+                    &HSTRING::from(tr(Text::AlreadyRunning)),
+                    &HSTRING::from(tr(Text::Tooltip)),
+                    MB_OK | MB_ICONINFORMATION,
+                );
+            }
         }
         return;
     };
@@ -132,12 +135,25 @@ fn forward_input(event: InputEvent) {
         extras::send(extras::ExtrasMsg::Router(event));
         return;
     }
+    if matches!(event, InputEvent::Foreground { .. }) {
+        extras::send(extras::ExtrasMsg::Foreground);
+    }
     let delivered = ENGINE
         .get()
         .is_some_and(|tx| tx.send(EngineMsg::Input(event)).is_ok());
     if !delivered {
         input::set_engine_alive(false);
     }
+}
+
+/// Starts the settings app from this program's folder. It shows the window
+/// that is already open, if there is one.
+fn open_settings_app() -> bool {
+    std::env::current_exe()
+        .ok()
+        .map(|exe| exe.with_file_name("knob-settings.exe"))
+        .filter(|path| path.exists())
+        .is_some_and(|path| std::process::Command::new(path).spawn().is_ok())
 }
 
 /// Holds a named mutex while running; `None` if another instance has it.

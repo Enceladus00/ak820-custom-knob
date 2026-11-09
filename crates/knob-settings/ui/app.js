@@ -122,6 +122,8 @@ const state = {
   recording: null, // { macro, last } while a macro is being recorded
   applying: false,
   autostart: null, // { available, enabled }; null until known
+  daemon: null, // { running, available }; null until known
+  version: '',
   picker: null, // index of the profile the app picker adds to
   apps: null,
   appFilter: '',
@@ -242,6 +244,9 @@ function updateChrome() {
   const banners = [];
   if (state.loadError) {
     banners.push(`<div class="banner warn">${t('banners.loadError', { error: state.loadError })}</div>`);
+  }
+  if (state.daemon && !state.daemon.running) {
+    banners.push(`<div class="banner warn banner-action"><span>${t('banners.notRunning')}</span>${state.daemon.available ? `<button class="btn small" data-cmd="start-daemon">${t('banners.start')}</button>` : ''}</div>`);
   }
   if (problems) {
     banners.push(`<div class="banner error">${t('banners.problems')}
@@ -617,7 +622,10 @@ function macroEditor(item, i) {
     </div>
     <div class="setting-row">
       <div><strong>${t('macros.repeat')}</strong></div>
-      ${numberParam(`macros.${i}.repeat`, item.repeat, 1, 100, t('macros.times'))}
+      <div class="color-controls">
+        ${checkParam(`macros.${i}.until_stopped`, item.until_stopped, t('macros.untilStopped'))}
+        ${item.until_stopped ? '' : numberParam(`macros.${i}.repeat`, item.repeat, 1, 100, t('macros.times'))}
+      </div>
     </div>
     <div class="steps-head">
       <h2>${t('macros.stepsTitle')}</h2>
@@ -814,6 +822,14 @@ function generalPage() {
       </div>
     </section>
     <section class="card">
+      <h2>${t('general.about')}</h2>
+      <p class="hint">${t('general.aboutText', { version: esc(state.version) })}</p>
+      <div class="button-row">
+        <button class="btn" data-cmd="open" data-which="project">${t('general.projectPage')}</button>
+        <button class="btn" data-cmd="open" data-which="releases">${t('general.checkUpdates')}</button>
+      </div>
+    </section>
+    <section class="card">
       <h2>${t('general.startOver')}</h2>
       <p class="hint">${t('general.startOverHint')}</p>
       <button class="btn danger" data-cmd="restore-defaults">${t('general.restore')}</button>
@@ -863,7 +879,7 @@ async function save() {
     await invoke('save_config', { config: toRust(state.config) });
     state.savedJson = JSON.stringify(state.config);
     state.loadError = null;
-    toast(tPlain('toast.saved'));
+    toast(tPlain(state.daemon?.running === false ? 'toast.savedNotRunning' : 'toast.saved'));
   } catch (e) {
     toast(tPlain('toast.saveFailed', { error: e }), true);
   }
@@ -1079,6 +1095,14 @@ const commands = {
   'apply-layout': () => applyLayout(),
 
   theme: (el) => { state.config.ui.theme = el.dataset.theme; changed(); },
+  'start-daemon': async () => {
+    try {
+      await invoke('start_daemon');
+    } catch (e) {
+      toast(String(e), true);
+    }
+    setTimeout(refreshDaemon, 800);
+  },
   open: (el) => invoke('open_location', { which: el.dataset.which }).catch((e) => toast(String(e), true)),
   'restore-defaults': async () => {
     if (!confirm(tPlain('general.confirmRestore'))) return;
@@ -1185,7 +1209,7 @@ document.addEventListener('change', (e) => {
     changeCommands[el.dataset.cmd](el);
   } else if (el.dataset.bind && el.type === 'checkbox') {
     setPath(state.config, el.dataset.bind, el.checked);
-    changed(false);
+    changed(el.dataset.bind.endsWith('.until_stopped'));
   } else if (el.dataset.special) {
     if (!el.value) return;
     setPath(state.config, el.dataset.special, el.value);
@@ -1307,6 +1331,20 @@ document.addEventListener('keydown', (e) => {
 
 // ---------------------------------------------------------------- start
 
+async function refreshDaemon() {
+  const daemon = await invoke('daemon_state').catch(() => null);
+  if (JSON.stringify(daemon) === JSON.stringify(state.daemon)) return;
+  state.daemon = daemon;
+  if (state.config) updateChrome();
+}
+
+/** Closing the window must not silently throw away edits. */
+function guardUnsavedChanges() {
+  window.__TAURI__?.window?.getCurrentWindow?.().onCloseRequested((event) => {
+    if (state.config && isDirty() && !confirm(tPlain('banners.confirmClose'))) event.preventDefault();
+  });
+}
+
 async function init() {
   applyAppearance();
   try {
@@ -1315,6 +1353,10 @@ async function init() {
     state.path = loaded.path;
     state.loadError = loaded.error;
     state.autostart = await invoke('get_autostart').catch(() => null);
+    state.version = await invoke('app_version').catch(() => '');
+    await refreshDaemon();
+    setInterval(refreshDaemon, 3000);
+    guardUnsavedChanges();
     // A broken file counts as unsaved, so one Save replaces it with what is shown.
     state.savedJson = loaded.error ? '' : JSON.stringify(state.config);
     render();
