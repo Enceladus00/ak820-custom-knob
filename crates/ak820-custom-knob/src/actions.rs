@@ -4,6 +4,7 @@ use knob_core::{Action, Dir, Gesture, HookKey, Output, accel_factor};
 use knob_win::audio::Audio;
 use knob_win::output;
 
+use crate::extras::{self, ExtrasMsg};
 use crate::i18n::{Text, trf};
 use crate::ui::{self, UiEvent};
 
@@ -98,6 +99,9 @@ impl Actions {
                 }
             }
             Action::MouseClick { button } => output::click(*button),
+            Action::ToggleMouseMode => extras::send(ExtrasMsg::ToggleMouse),
+            Action::ClickHints => extras::send(ExtrasMsg::ShowHints),
+            Action::RunMacro { name } => extras::send(ExtrasMsg::RunMacro(name.clone())),
             // Handled inside the engine.
             Action::CycleMode | Action::Passthrough | Action::Nothing => {}
         }

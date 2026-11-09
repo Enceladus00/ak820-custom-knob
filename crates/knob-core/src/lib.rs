@@ -11,9 +11,12 @@
 pub mod classify;
 pub mod config;
 pub mod engine;
+pub mod extras;
 pub mod gesture;
 pub mod keys;
+pub mod pointer;
 pub mod resolver;
+pub mod router;
 pub mod signal;
 
 pub use config::{

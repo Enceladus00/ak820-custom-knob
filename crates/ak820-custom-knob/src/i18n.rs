@@ -48,6 +48,9 @@ pub enum Text {
     CrashMessage,
     InputErrorTitle,
     AlreadyRunning,
+    OsdMouseOn,
+    OsdMouseOff,
+    OsdNoHints,
 }
 
 type Language = fn(Text) -> Option<&'static str>;
@@ -71,6 +74,9 @@ fn en(text: Text) -> Option<&'static str> {
         MenuEditConfig => "Edit config file",
         MenuLogs => "Open log folder",
         MenuQuit => "Quit",
+        OsdMouseOn => "Mouse mode on",
+        OsdMouseOff => "Mouse mode off",
+        OsdNoHints => "Nothing clickable found here",
         OsdPaused => "Knob: paused",
         OsdResumed => "Knob: custom functions on",
         OsdReloaded => "Settings reloaded",

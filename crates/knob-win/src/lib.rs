@@ -11,6 +11,7 @@
 pub mod audio;
 pub mod autostart;
 pub mod clock;
+pub mod hints;
 pub mod input;
 pub mod lighting;
 pub mod output;

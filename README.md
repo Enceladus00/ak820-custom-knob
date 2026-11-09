@@ -138,10 +138,12 @@ every option.
 ## Privacy
 
 To see the knob, the program installs a Windows keyboard hook, which lets it
-see every key press. It only ever acts on the volume and mute keys and lets
-everything else through untouched. It doesn't record or store any keys,
-its log files contain no key presses, and it never connects to the
-internet.
+see every key press. By default it only acts on the volume and mute keys and
+lets everything else through untouched. If you turn on macros, mouse mode or
+click hints, it also acts on the keys those features use. It doesn't record or
+store what you type, its log files contain no key presses, and it never
+connects to the internet. Macro recording only captures keys pressed inside
+the Settings window while you are recording.
 
 ## How it works
 

@@ -2,21 +2,29 @@
 //! so our own hook lets it through.
 
 use knob_core::{HookKey, Key, KeyCombo, Modifiers, MouseButton};
+use windows::Win32::Foundation::POINT;
 use windows::Win32::UI::Input::KeyboardAndMouse::{
-    GetKeyboardLayout, INPUT, INPUT_0, INPUT_KEYBOARD, INPUT_MOUSE, KEYBD_EVENT_FLAGS, KEYBDINPUT,
-    KEYEVENTF_EXTENDEDKEY, KEYEVENTF_KEYUP, KEYEVENTF_UNICODE, MOUSE_EVENT_FLAGS,
-    MOUSEEVENTF_HWHEEL, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, MOUSEEVENTF_MIDDLEDOWN,
-    MOUSEEVENTF_MIDDLEUP, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, MOUSEEVENTF_WHEEL,
-    MOUSEINPUT, SendInput, VIRTUAL_KEY, VkKeyScanExW,
+    GetAsyncKeyState, GetKeyboardLayout, INPUT, INPUT_0, INPUT_KEYBOARD, INPUT_MOUSE,
+    KEYBD_EVENT_FLAGS, KEYBDINPUT, KEYEVENTF_EXTENDEDKEY, KEYEVENTF_KEYUP, KEYEVENTF_UNICODE,
+    MOUSE_EVENT_FLAGS, MOUSEEVENTF_HWHEEL, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP,
+    MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP,
+    MOUSEEVENTF_WHEEL, MOUSEINPUT, SendInput, VIRTUAL_KEY, VkKeyScanExW,
 };
-use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowThreadProcessId};
+use windows::Win32::UI::WindowsAndMessaging::{
+    GetCursorPos, GetForegroundWindow, GetWindowThreadProcessId, SetCursorPos,
+};
 
 use crate::MARKER;
+use std::time::{Duration, Instant};
 
 const VK_CONTROL: u16 = 0x11;
 const VK_SHIFT: u16 = 0x10;
 const VK_MENU: u16 = 0x12;
 const VK_LWIN: u16 = 0x5B;
+const VK_RWIN: u16 = 0x5C;
+/// A key code no keyboard sends. Tapping it stops Windows from treating a
+/// released Alt or Win as "open the menu".
+const VK_UNASSIGNED: u16 = 0xE8;
 const WHEEL_DELTA: i32 = 120;
 
 /// Keys that need the "extended" flag to be recognised correctly.
@@ -202,11 +210,85 @@ pub fn zoom(notches: i32) {
     ]);
 }
 
-pub fn click(button: MouseButton) {
-    let (down, up) = match button {
+fn button_flags(button: MouseButton) -> (MOUSE_EVENT_FLAGS, MOUSE_EVENT_FLAGS) {
+    match button {
         MouseButton::Left => (MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP),
         MouseButton::Right => (MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP),
         MouseButton::Middle => (MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP),
-    };
+    }
+}
+
+pub fn click(button: MouseButton) {
+    let (down, up) = button_flags(button);
     send(&[mouse_input(down, 0), mouse_input(up, 0)]);
+}
+
+/// Presses or releases a mouse button, for dragging.
+pub fn button(button: MouseButton, down: bool) {
+    let (press, release) = button_flags(button);
+    send(&[mouse_input(if down { press } else { release }, 0)]);
+}
+
+/// Moves the pointer by exactly this many pixels. Setting the position
+/// directly keeps Windows' pointer acceleration out of the speed setting.
+pub fn move_pointer(dx: i32, dy: i32) {
+    let mut at = POINT::default();
+    unsafe {
+        if GetCursorPos(&mut at).is_ok() {
+            let _ = SetCursorPos(at.x + dx, at.y + dy);
+        }
+    }
+}
+
+/// Moves the pointer to a screen position and clicks there.
+pub fn click_at(x: i32, y: i32) {
+    unsafe {
+        let _ = SetCursorPos(x, y);
+    }
+    click(MouseButton::Left);
+}
+
+/// Types text directly, whatever the keyboard layout is.
+pub fn text(text: &str) {
+    let inputs: Vec<INPUT> = text
+        .encode_utf16()
+        .flat_map(|unit| [unicode_input(unit, true), unicode_input(unit, false)])
+        .collect();
+    send(&inputs);
+}
+
+/// See [`VK_UNASSIGNED`].
+pub fn mask_menu() {
+    send(&[
+        key_input(VK_UNASSIGNED, true),
+        key_input(VK_UNASSIGNED, false),
+    ]);
+}
+
+/// Waits until Ctrl, Shift, Alt and Win are up, or the timeout passes.
+pub fn wait_modifiers_released(timeout: Duration) {
+    let end = Instant::now() + timeout;
+    let held = |vk: u16| unsafe { GetAsyncKeyState(vk as i32) } < 0;
+    while Instant::now() < end
+        && [VK_CONTROL, VK_SHIFT, VK_MENU, VK_LWIN, VK_RWIN]
+            .into_iter()
+            .any(held)
+    {
+        std::thread::sleep(Duration::from_millis(10));
+    }
+}
+
+/// The combination with a character key replaced by its key on the current
+/// layout. `None` if no key on the layout types that character.
+pub fn with_layout_vk(combo: KeyCombo) -> Option<KeyCombo> {
+    match combo.key {
+        Key::Vk(_) => Some(combo),
+        Key::Char(c) => {
+            let (vk, _) = key_for_char(c)?;
+            Some(KeyCombo {
+                key: Key::Vk(vk),
+                ..combo
+            })
+        }
+    }
 }

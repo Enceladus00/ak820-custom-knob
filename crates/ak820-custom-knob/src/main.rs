@@ -4,6 +4,7 @@
 //! Threads:
 //! * input  (knob-win): keyboard hook, Raw Input, foreground app
 //! * engine: knob-core's engine, timers, actions
+//! * extras: macros, mouse mode and click hints
 //! * config-watch: reloads the config file when it is saved
 //! * main (UI): tray icon and on-screen popup
 
@@ -13,6 +14,8 @@
 mod actions;
 mod config_file;
 mod engine_thread;
+mod extras;
+mod hint_overlay;
 mod i18n;
 mod logger;
 mod osd;
@@ -69,6 +72,7 @@ fn main() {
         knob_win::autostart::repair(&exe);
     }
 
+    extras::start(config.clone());
     let engine = engine_thread::start(config);
     let _ = ENGINE.set(engine.clone());
 
@@ -76,6 +80,7 @@ fn main() {
         Ok(config) => {
             log::info!("config reloaded");
             i18n::set_language(&config.ui.language);
+            extras::send(extras::ExtrasMsg::Config(Box::new(config.clone())));
             let _ = engine.send(EngineMsg::Config(config));
             ui::notify(UiEvent::LanguageChanged);
             ui::notify(UiEvent::Osd(tr(Text::OsdReloaded).into()));
@@ -121,6 +126,10 @@ fn main() {
 fn forward_input(event: InputEvent) {
     if let InputEvent::KeyboardPresent(_) = event {
         ui::notify(ui::UiEvent::KeyboardChanged);
+        return;
+    }
+    if let InputEvent::Extra(event) = event {
+        extras::send(extras::ExtrasMsg::Router(event));
         return;
     }
     let delivered = ENGINE

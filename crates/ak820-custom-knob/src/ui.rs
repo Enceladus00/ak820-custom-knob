@@ -41,15 +41,26 @@ const ID_AUTOSTART: usize = 7;
 
 pub enum UiEvent {
     /// The active mode changed. `announce` also shows it on screen.
-    Mode { name: String, announce: bool },
+    Mode {
+        name: String,
+        announce: bool,
+    },
     /// Show a short message on screen.
     Osd(String),
     /// Show a tray notification.
-    Warning { title: String, text: String },
+    Warning {
+        title: String,
+        text: String,
+    },
     /// The language changed: refresh texts that stay on screen.
     LanguageChanged,
     /// The keyboard was connected or removed.
     KeyboardChanged,
+    /// Put click-hint labels on screen.
+    HintsShow(Vec<(String, knob_win::hints::Target)>),
+    /// The letters typed so far.
+    HintsTyped(String),
+    HintsHide,
 }
 
 static HWND_VALUE: AtomicIsize = AtomicIsize::new(0);
@@ -126,6 +137,7 @@ pub fn run(startup_warning: Option<(String, String)>) -> Result<()> {
         add_icon(hwnd);
         log::debug!("ui: tray icon added");
         osd::init(instance.into())?;
+        crate::hint_overlay::init(instance.into())?;
         log::debug!("ui: osd ready");
 
         HWND_VALUE.store(hwnd.0 as isize, Ordering::SeqCst);
@@ -267,6 +279,9 @@ fn drain_events() {
             UiEvent::Warning { title, text } => balloon(&title, &text),
             UiEvent::LanguageChanged => update_tooltip(),
             UiEvent::KeyboardChanged => update_tooltip(),
+            UiEvent::HintsShow(labels) => crate::hint_overlay::show(labels),
+            UiEvent::HintsTyped(text) => crate::hint_overlay::typed(text),
+            UiEvent::HintsHide => crate::hint_overlay::hide(),
         }
     }
 }

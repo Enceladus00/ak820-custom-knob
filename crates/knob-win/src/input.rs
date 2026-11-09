@@ -9,16 +9,18 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::ffi::c_void;
-use std::sync::OnceLock;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
+use std::sync::{LazyLock, Mutex, OnceLock};
 
+use knob_core::router::{Decision, Hotkey, KeyInfo, Router, RouterEvent};
 use knob_core::{HookKey, Input, Modifiers};
 use windows::Win32::Foundation::{HANDLE, HWND, LPARAM, LRESULT, WPARAM};
 use windows::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows::Win32::System::Threading::GetCurrentThreadId;
 use windows::Win32::UI::Accessibility::{HWINEVENTHOOK, SetWinEventHook, UnhookWinEvent};
 use windows::Win32::UI::Input::KeyboardAndMouse::{
-    GetAsyncKeyState, VK_CONTROL, VK_LWIN, VK_MENU, VK_RWIN, VK_SHIFT,
+    GetAsyncKeyState, VK_CONTROL, VK_LCONTROL, VK_LMENU, VK_LSHIFT, VK_LWIN, VK_MENU, VK_RMENU,
+    VK_RWIN, VK_SHIFT,
 };
 use windows::Win32::UI::Input::{
     GetRawInputData, GetRawInputDeviceInfoW, GetRawInputDeviceList, HRAWINPUT, RAWINPUT,
@@ -45,6 +47,8 @@ pub enum InputEvent {
     Foreground { pid: u32, exe: String },
     /// A supported keyboard (its receiver) was connected or removed.
     KeyboardPresent(bool),
+    /// A hotkey, mouse-mode key or click-hint key.
+    Extra(RouterEvent),
 }
 
 static SINK: OnceLock<fn(InputEvent)> = OnceLock::new();
@@ -52,6 +56,7 @@ static THREAD_ID: AtomicU32 = AtomicU32::new(0);
 static PAUSED: AtomicBool = AtomicBool::new(false);
 static ENGINE_ALIVE: AtomicBool = AtomicBool::new(true);
 static KEYBOARD_PRESENT: AtomicBool = AtomicBool::new(false);
+static ROUTER: LazyLock<Mutex<Router>> = LazyLock::new(Mutex::default);
 /// Timers on the input window: a regular device rescan, and one shortly after
 /// a device change.
 const TIMER_RESCAN: usize = 1;
@@ -70,6 +75,25 @@ pub fn set_paused(paused: bool) {
 
 pub fn is_paused() -> bool {
     PAUSED.load(Ordering::SeqCst)
+}
+
+/// Replaces the keys that start an optional feature.
+pub fn set_hotkeys(hotkeys: Vec<Hotkey>) {
+    if let Ok(mut router) = ROUTER.lock() {
+        router.set_hotkeys(hotkeys);
+    }
+}
+
+pub fn set_mouse_active(active: bool) {
+    if let Ok(mut router) = ROUTER.lock() {
+        router.set_mouse_active(active);
+    }
+}
+
+pub fn set_hints_active(active: bool) {
+    if let Ok(mut router) = ROUTER.lock() {
+        router.set_hints_active(active);
+    }
 }
 
 /// Fail-safe: once the engine is gone, the hook stops swallowing keys.
@@ -167,6 +191,36 @@ pub fn run(sink: fn(InputEvent)) -> Result<()> {
     Ok(())
 }
 
+/// What the optional features want done with this key. Does nothing at all
+/// while none of them is in use.
+fn route(vk: u16, down: bool) -> Decision {
+    let Ok(mut router) = ROUTER.lock() else {
+        return Decision::default();
+    };
+    if router.is_idle() {
+        return Decision::default();
+    }
+    let held = |vk: u16| unsafe { GetAsyncKeyState(vk as i32) } < 0;
+    let mut mods = current_modifiers();
+    // AltGr reaches Windows as Left Ctrl + Right Alt. It types characters, so
+    // it must not count as a Ctrl+Alt hotkey.
+    if held(VK_LCONTROL.0) && held(VK_RMENU.0) {
+        mods.ctrl = false;
+        mods.alt = false;
+    }
+    router.handle(KeyInfo {
+        vk,
+        down,
+        mods,
+        other_modifier_held: held(VK_LCONTROL.0)
+            || held(VK_LSHIFT.0)
+            || held(VK_LMENU.0)
+            || held(VK_RMENU.0)
+            || held(VK_LWIN.0)
+            || held(VK_RWIN.0),
+    })
+}
+
 fn current_modifiers() -> Modifiers {
     let held = |vk: u16| unsafe { GetAsyncKeyState(vk as i32) } < 0;
     Modifiers {
@@ -182,6 +236,21 @@ extern "system" fn hook_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESU
     unsafe {
         if code == HC_ACTION as i32 {
             let k = &*(lparam.0 as *const KBDLLHOOKSTRUCT);
+            if HookKey::from_vk(k.vkCode).is_none()
+                && k.dwExtraInfo != MARKER
+                && !PAUSED.load(Ordering::Relaxed)
+                && ENGINE_ALIVE.load(Ordering::Relaxed)
+            {
+                let msg = wparam.0 as u32;
+                let down = msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN;
+                let decision = route(k.vkCode as u16, down);
+                if let Some(event) = decision.event {
+                    emit(InputEvent::Extra(event));
+                }
+                if decision.swallow {
+                    return LRESULT(1);
+                }
+            }
             if let Some(key) = HookKey::from_vk(k.vkCode)
                 && k.dwExtraInfo != MARKER
                 && !PAUSED.load(Ordering::Relaxed)

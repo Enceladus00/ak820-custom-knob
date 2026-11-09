@@ -5,6 +5,7 @@ use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 
+use crate::extras::{HintSettings, MacroDef, MouseSettings};
 use crate::gesture::{GestureKind, GestureTiming};
 use crate::keys::KeyCombo;
 use crate::signal::{MS, Modifiers};
@@ -36,6 +37,12 @@ pub struct Config {
     /// built-in set.
     #[serde(rename = "lighting", default = "default_layouts")]
     pub layouts: Vec<LightingLayout>,
+    #[serde(rename = "macro", default, skip_serializing_if = "Vec::is_empty")]
+    pub macros: Vec<MacroDef>,
+    #[serde(default)]
+    pub mouse: MouseSettings,
+    #[serde(default)]
+    pub hints: HintSettings,
 }
 
 fn default_layouts() -> Vec<LightingLayout> {
@@ -194,6 +201,13 @@ pub enum Action {
     MouseClick {
         button: MouseButton,
     },
+    /// Turn arrow-key mouse control on or off.
+    ToggleMouseMode,
+    /// Show letter labels on what can be clicked in the app in front.
+    ClickHints,
+    RunMacro {
+        name: String,
+    },
     /// Switch to the profile's next mode.
     CycleMode,
     /// Stock knob behaviour: let the volume / mute key through.
@@ -232,7 +246,12 @@ impl Action {
             | Action::Passthrough
             | Action::Nothing => true,
             Action::Keys { keys, cw, ccw } => keys.is_none() && cw.is_some() && ccw.is_some(),
-            Action::Mute | Action::MouseClick { .. } | Action::CycleMode => false,
+            Action::Mute
+            | Action::MouseClick { .. }
+            | Action::CycleMode
+            | Action::ToggleMouseMode
+            | Action::ClickHints
+            | Action::RunMacro { .. } => false,
         }
     }
 
@@ -242,6 +261,9 @@ impl Action {
             Action::Mute
             | Action::MouseClick { .. }
             | Action::CycleMode
+            | Action::ToggleMouseMode
+            | Action::ClickHints
+            | Action::RunMacro { .. }
             | Action::Passthrough
             | Action::Nothing => true,
             Action::Keys { keys, cw, ccw } => keys.is_some() && cw.is_none() && ccw.is_none(),
@@ -368,6 +390,20 @@ impl Mode {
             GestureKind::DoubleClick => self.double_click.as_ref(),
             GestureKind::LongPress => self.long_press.as_ref(),
         }
+    }
+
+    /// Every action bound anywhere in this mode.
+    pub(crate) fn all_actions(&self) -> impl Iterator<Item = &Action> {
+        let own = [
+            &self.rotate,
+            &self.click,
+            &self.double_click,
+            &self.long_press,
+        ];
+        let layers = self
+            .layers()
+            .flat_map(|(_, b)| [&b.rotate, &b.click, &b.double_click, &b.long_press]);
+        own.into_iter().chain(layers).filter_map(Option::as_ref)
     }
 
     fn own_bindings(&self) -> Bindings {
@@ -506,6 +542,7 @@ impl Config {
         for layout in &self.layouts {
             layout.check(&mut errors);
         }
+        self.check_extras(&mut errors);
         if errors.is_empty() {
             Ok(())
         } else {
