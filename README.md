@@ -10,6 +10,8 @@ works exactly as before.
 
 [![Download for Windows](https://img.shields.io/badge/Download-for%20Windows-2f6feb?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/Enceladus00/ak820-custom-knob/releases/latest/download/ak820-custom-knob-setup.exe)
 
+![The Modes page in Settings, showing what the knob does when turned, pressed and long-pressed](docs/images/settings-modes.png)
+
 ## What the knob can do
 
 The knob has three gestures: **turn**, **press** and **long press**. Each
@@ -43,6 +45,8 @@ Ctrl, Shift, Alt or Win.
 only a "Timeline" mode in your video editor. It switches automatically when
 another app comes to the front, and can remember the last mode you used
 there.
+
+![The Apps page in Settings, with a video editor using its own Timeline mode and every other app using the default modes](docs/images/settings-apps.png)
 
 **Double press** is available too, for rarely needed actions. Modes that use
 it make a single press wait a moment to see whether a second one follows.
