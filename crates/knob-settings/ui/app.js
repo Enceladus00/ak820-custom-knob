@@ -17,6 +17,8 @@ window.startPreview = (mock) => { invoke = mock; init(); };
 const PAGES = [
   { id: 'modes', icon: 'dial' },
   { id: 'apps', icon: 'apps' },
+  { id: 'macros', icon: 'macro' },
+  { id: 'controls', icon: 'pointer' },
   { id: 'lighting', icon: 'light' },
   { id: 'general', icon: 'gear' },
 ];
@@ -72,6 +74,9 @@ const ACTIONS = {
     ['cycle_mode', {}],
     ['keys', { keys: 'Space' }],
     ['mouse_click', { button: 'middle' }],
+    ['run_macro', { name: '' }],
+    ['toggle_mouse_mode', {}],
+    ['click_hints', {}],
     ['passthrough', {}],
     ['none', {}],
   ],
@@ -87,6 +92,8 @@ const ICONS = {
   apps: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg>',
   gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>',
   light: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.8 10.6c.7.6 1.1 1.3 1.2 2.4h5.2c.1-1.1.5-1.8 1.2-2.4A6 6 0 0 0 12 3Z"/></svg>',
+  macro: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M8 14h8"/></svg>',
+  pointer: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l6.5 17 2.4-6.9L21 10.7 5 3Z"/></svg>',
   plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
 };
 
@@ -102,6 +109,8 @@ const state = {
   modeIndex: 0,
   layer: '',
   layoutIndex: 0,
+  macroIndex: 0,
+  recording: null, // { macro, last } while a macro is being recorded
   applying: false,
   autostart: null, // { available, enabled }; null until known
   picker: null, // index of the profile the app picker adds to
@@ -136,8 +145,8 @@ function setPath(obj, path, value) {
 // The Rust side names the lists after the TOML tables ([[mode]], [[profile]]);
 // the UI uses plural names. Convert at the boundary.
 function fromRust(raw) {
-  const { mode, profile, ...rest } = raw;
-  const config = { ...rest, modes: mode, profiles: profile };
+  const { mode, profile, macro, ...rest } = raw;
+  const config = { ...rest, modes: mode, profiles: profile, macros: macro ?? [] };
   for (const p of config.profiles) {
     if (typeof p.match.exe === 'string') p.match.exe = [p.match.exe];
   }
@@ -145,8 +154,8 @@ function fromRust(raw) {
 }
 
 function toRust(config) {
-  const { modes, profiles, ...rest } = config;
-  return { ...rest, mode: modes, profile: profiles };
+  const { modes, profiles, macros, ...rest } = config;
+  return { ...rest, mode: modes, profile: profiles, macro: macros };
 }
 
 const isDirty = () => JSON.stringify(state.config) !== state.savedJson;
@@ -203,7 +212,7 @@ function render() {
 
   const main = $('#main');
   const scroll = main.scrollTop;
-  const pages = { modes: modesPage, apps: appsPage, lighting: lightingPage, general: generalPage };
+  const pages = { modes: modesPage, apps: appsPage, macros: macrosPage, controls: controlsPage, lighting: lightingPage, general: generalPage };
   main.innerHTML = pages[state.page]();
   main.scrollTop = scroll;
   renderPicker();
@@ -307,6 +316,14 @@ function paramsHtml(action, path, kind) {
     } else {
       parts.push(keyParam(`${path}.keys`, action.keys, t('params.keys')));
     }
+  }
+  if (action.action === 'run_macro') {
+    const macros = state.config.macros;
+    parts.push(macros.length
+      ? `<label class="param"><select data-bind="${path}.name" aria-label="${esc(tPlain('macros.name'))}">
+        ${macros.map((m) => `<option value="${esc(m.name)}" ${m.name === action.name ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}
+      </select></label>`
+      : `<span class="muted">${t('macros.noneYet')}</span>`);
   }
   if (action.action === 'mouse_click') {
     parts.push(`<label class="param"><select data-bind="${path}.button">
@@ -521,6 +538,170 @@ async function applyLayout() {
   render();
 }
 
+// ---------- macros page
+
+const currentMacro = () => state.config.macros[state.macroIndex];
+const STEP_TYPES = ['keys', 'text', 'wait', 'click'];
+
+function macrosPage() {
+  const macros = state.config.macros;
+  state.macroIndex = Math.min(state.macroIndex, Math.max(0, macros.length - 1));
+  const list = macros.map((m, i) => `
+    <button class="mode-item ${i === state.macroIndex ? 'active' : ''}" data-cmd="select-macro" data-index="${i}">
+      <span class="mode-name">${esc(m.name) || t('modes.unnamed')}</span>
+      <span class="mode-meta">${m.hotkey ? esc(m.hotkey) : t('macros.noHotkey')}</span>
+    </button>`).join('');
+  const item = currentMacro();
+  return `<div class="modes">
+    <div class="mode-list">
+      ${list}
+      <button class="btn ghost" data-cmd="add-macro">${icon('plus')} ${t('macros.newMacro')}</button>
+    </div>
+    ${item ? macroEditor(item, state.macroIndex) : `<div class="card muted">${t('macros.empty')}</div>`}
+  </div>`;
+}
+
+function stepFields(step, path) {
+  if (step.step === 'keys') return keyParam(`${path}.keys`, step.keys, t('macros.steps.keys'));
+  if (step.step === 'text') {
+    return `<label class="field grow"><span>${t('macros.steps.text')}</span>
+      <input type="text" data-bind="${path}.text" value="${esc(step.text)}" spellcheck="false"></label>`;
+  }
+  if (step.step === 'wait') return numberParam(`${path}.ms`, step.ms, 0, 60000, t('macros.ms'));
+  return `<label class="param"><select data-bind="${path}.button" aria-label="${esc(tPlain('macros.steps.click'))}">
+    ${['left', 'middle', 'right'].map((b) => `<option value="${b}" ${step.button === b ? 'selected' : ''}>${t(`params.mouse.${b}`)}</option>`).join('')}
+  </select></label>`;
+}
+
+function macroEditor(item, i) {
+  const recording = state.recording?.macro === i;
+  const count = item.steps.length;
+  const steps = item.steps.map((step, k) => {
+    const path = `macros.${i}.steps.${k}`;
+    return `<div class="step-row">
+      <span class="order">${k + 1}</span>
+      <div class="step-body">${stepFields(step, path)}</div>
+      <div class="head-actions">
+        <button class="icon-btn" data-cmd="step-move" data-index="${k}" data-delta="-1" title="${esc(tPlain('apps.modeEarlier'))}" ${k === 0 ? 'disabled' : ''}>↑</button>
+        <button class="icon-btn" data-cmd="step-move" data-index="${k}" data-delta="1" title="${esc(tPlain('apps.modeLater'))}" ${k === count - 1 ? 'disabled' : ''}>↓</button>
+        <button class="icon-btn danger" data-cmd="step-remove" data-index="${k}" title="${esc(tPlain('apps.remove'))}">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+  const addOptions = STEP_TYPES.map((s) => `<option value="${s}">${t(`macros.steps.${s}`)}</option>`).join('');
+  return `<section class="card editor">
+    <div class="editor-head">
+      <label class="field grow"><span>${t('macros.name')}</span>
+        <input type="text" data-bind="macros.${i}.name" value="${esc(item.name)}" maxlength="40" spellcheck="false">
+      </label>
+      <div class="head-actions">
+        <button class="btn" data-cmd="duplicate-macro">${t('buttons.duplicate')}</button>
+        <button class="btn danger" data-cmd="delete-macro">${t('buttons.delete')}</button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div><strong>${t('macros.hotkey')}</strong><small>${t('macros.hotkeyHint')}</small></div>
+      <div class="color-controls">
+        <input class="keycap" readonly data-keycap="macros.${i}.hotkey" value="${esc(item.hotkey ?? '')}" placeholder="${esc(tPlain('macros.none'))}" title="${esc(tPlain('params.keycapTitle'))}">
+        ${item.hotkey ? `<button class="icon-btn" data-cmd="hotkey-clear" title="${esc(tPlain('apps.remove'))}">✕</button>` : ''}
+      </div>
+    </div>
+    <div class="setting-row">
+      <div><strong>${t('macros.repeat')}</strong></div>
+      ${numberParam(`macros.${i}.repeat`, item.repeat, 1, 100, t('macros.times'))}
+    </div>
+    <div class="steps-head">
+      <h2>${t('macros.stepsTitle')}</h2>
+      <div class="head-actions">
+        <button class="btn ${recording ? 'danger' : ''}" data-cmd="macro-record">${recording ? t('macros.stop') : t('macros.record')}</button>
+        <select data-cmd="step-add" aria-label="${esc(tPlain('macros.addStep'))}">
+          <option value="">${t('macros.addStep')}</option>${addOptions}
+        </select>
+      </div>
+    </div>
+    ${recording ? `<div class="banner warn">${t('macros.recording')}</div>` : ''}
+    ${steps || `<p class="hint">${t('macros.noSteps')}</p>`}
+    <p class="hint">${t('macros.note')}</p>
+  </section>`;
+}
+
+function renameMacroRefs(from, to) {
+  for (const mode of state.config.modes) {
+    for (const bindings of [mode, mode.ctrl, mode.shift, mode.alt, mode.win]) {
+      if (!bindings) continue;
+      for (const g of GESTURES) {
+        const action = bindings[g.key];
+        if (action?.action === 'run_macro' && action.name === from) action.name = to;
+      }
+    }
+  }
+}
+
+function uniqueMacroName(base) {
+  const names = new Set(state.config.macros.map((m) => m.name));
+  if (!names.has(base)) return base;
+  for (let n = 2; ; n++) {
+    const name = `${base} ${n}`;
+    if (!names.has(name)) return name;
+  }
+}
+
+function recordKey(e) {
+  e.preventDefault();
+  if (e.repeat) return;
+  const combo = comboFromEvent(e);
+  if (!combo) return;
+  const steps = state.config.macros[state.recording.macro]?.steps;
+  if (!steps || steps.length >= 498) return;
+  const now = performance.now();
+  if (state.recording.last) {
+    const gap = Math.round((now - state.recording.last) / 10) * 10;
+    if (gap >= 60) steps.push({ step: 'wait', ms: Math.min(gap, 60000) });
+  }
+  state.recording.last = now;
+  steps.push({ step: 'keys', keys: combo });
+  changed();
+}
+
+// ---------- mouse and hints page
+
+function controlsPage() {
+  const { mouse, hints } = state.config;
+  const keycap = (path, value) => `<input class="keycap" readonly data-keycap="${path}" value="${esc(value ?? '')}" title="${esc(tPlain('params.keycapTitle'))}">`;
+  const legend = ['arrows', 'rctrl', 'rshift', 'end', 'pages', 'home', 'esc']
+    .map((key) => `<tr><td>${t(`controls.keys.${key}.key`)}</td><td>${t(`controls.keys.${key}.does`)}</td></tr>`).join('');
+  return `<section class="card">
+      <h2>${t('controls.mouseTitle')}</h2>
+      <p class="hint">${t('controls.mouseLead')}</p>
+      <label class="setting-row">
+        <div><strong>${t('controls.enable')}</strong></div>
+        <input type="checkbox" data-bind="mouse.enabled" data-type="bool" ${mouse.enabled ? 'checked' : ''}>
+      </label>
+      <div class="setting-row">
+        <div><strong>${t('controls.toggle')}</strong><small>${t('controls.toggleHint')}</small></div>
+        ${keycap('mouse.toggle', mouse.toggle)}
+      </div>
+      <div class="range-field">
+        <div><strong>${t('controls.speed')}</strong><small>${t('controls.speedHint')}</small></div>
+        <input type="range" min="200" max="5000" step="100" value="${esc(mouse.speed)}" data-bind="mouse.speed" data-type="int" data-plain="1" aria-label="${esc(tPlain('controls.speed'))}">
+        <output>${esc(mouse.speed)}</output>
+      </div>
+      <table class="legend"><tbody>${legend}</tbody></table>
+    </section>
+    <section class="card">
+      <h2>${t('controls.hintsTitle')}</h2>
+      <p class="hint">${t('controls.hintsLead')}</p>
+      <label class="setting-row">
+        <div><strong>${t('controls.enable')}</strong></div>
+        <input type="checkbox" data-bind="hints.enabled" data-type="bool" ${hints.enabled ? 'checked' : ''}>
+      </label>
+      <div class="setting-row">
+        <div><strong>${t('controls.hintsKey')}</strong><small>${t('controls.toggleHint')}</small></div>
+        ${keycap('hints.hotkey', hints.hotkey)}
+      </div>
+    </section>`;
+}
+
 // ---------- general page
 
 function generalPage() {
@@ -666,7 +847,7 @@ function addApp(exe) {
 // ---------------------------------------------------------------- commands
 
 const commands = {
-  nav: (el) => { state.page = el.dataset.page; render(); $('#main').scrollTop = 0; },
+  nav: (el) => { state.page = el.dataset.page; state.recording = null; render(); $('#main').scrollTop = 0; },
   save: () => save(),
   discard: () => {
     if (!state.savedJson) return;
@@ -756,6 +937,50 @@ const commands = {
     changed();
   },
 
+  'select-macro': (el) => { state.macroIndex = Number(el.dataset.index); state.recording = null; render(); },
+  'add-macro': () => {
+    const macros = state.config.macros;
+    macros.push({ name: uniqueMacroName(tPlain('macros.newName')), repeat: 1, steps: [] });
+    state.macroIndex = macros.length - 1;
+    state.recording = null;
+    changed();
+    const input = document.querySelector('.editor-head input');
+    input?.focus();
+    input?.select();
+  },
+  'duplicate-macro': () => {
+    const copy = clone(currentMacro());
+    copy.name = uniqueMacroName(tPlain('modes.copyName', { name: copy.name }));
+    delete copy.hotkey; // two macros can't share a hotkey
+    state.config.macros.splice(state.macroIndex + 1, 0, copy);
+    state.macroIndex += 1;
+    state.recording = null;
+    changed();
+  },
+  'delete-macro': () => {
+    if (!confirm(tPlain('macros.confirmDelete', { name: currentMacro().name }))) return;
+    state.config.macros.splice(state.macroIndex, 1);
+    state.recording = null;
+    changed();
+  },
+  'macro-record': () => {
+    if (state.recording) {
+      state.recording = null;
+    } else {
+      state.recording = { macro: state.macroIndex, last: 0 };
+      document.activeElement?.blur();
+    }
+    render();
+  },
+  'hotkey-clear': () => { delete currentMacro().hotkey; changed(); },
+  'step-remove': (el) => { currentMacro().steps.splice(Number(el.dataset.index), 1); changed(); },
+  'step-move': (el) => {
+    const steps = currentMacro().steps;
+    const i = Number(el.dataset.index);
+    const j = i + Number(el.dataset.delta);
+    [steps[i], steps[j]] = [steps[j], steps[i]];
+    changed();
+  },
   'select-layout': (el) => { state.layoutIndex = Number(el.dataset.index); render(); },
   'add-layout': () => {
     const layouts = state.config.lighting;
@@ -793,6 +1018,12 @@ const commands = {
 
 // Commands fired by <select> / checkbox changes.
 const changeCommands = {
+  'step-add': (el) => {
+    const defaults = { keys: { keys: 'Enter' }, text: { text: 'Text' }, wait: { ms: 200 }, click: { button: 'left' } };
+    if (!el.value) return;
+    currentMacro().steps.push({ step: el.value, ...defaults[el.value] });
+    changed();
+  },
   'set-action': (el) => {
     const { path, kind } = el.dataset;
     if (!el.value) {
@@ -801,6 +1032,7 @@ const changeCommands = {
     } else {
       const defaults = ACTIONS[kind].find(([id]) => id === el.value)[1];
       setPath(state.config, path, { action: el.value, ...clone(defaults) });
+      if (el.value === 'run_macro') setPath(state.config, `${path}.name`, state.config.macros[0]?.name ?? '');
     }
     changed();
   },
@@ -854,16 +1086,18 @@ document.addEventListener('input', (e) => {
     return;
   }
   if (!el.dataset.bind || el.type === 'checkbox') return;
+  const macroName = /^macros\.\d+\.name$/.test(el.dataset.bind);
+  if (macroName) renameMacroRefs(getPath(state.config, el.dataset.bind), el.value);
   setPath(state.config, el.dataset.bind, coerce(el));
   if (el.type === 'range') {
     el.nextElementSibling.innerHTML = el.dataset.plain ? esc(el.value) : t('general.ms', { value: el.value });
   }
   // Keep the list in step with the name being typed or the colour being picked.
-  const listMatch = /^(modes|lighting)\.(\d+)\.(name|color)$/.exec(el.dataset.bind);
+  const listMatch = /^(modes|macros|lighting)\.(\d+)\.(name|color)$/.exec(el.dataset.bind);
   if (listMatch) {
     const [, list, index] = listMatch;
     const item = document.querySelector(`.mode-item[data-index="${index}"] .mode-name`);
-    if (item && list === 'modes') item.textContent = el.value || tPlain('modes.unnamed');
+    if (item && list !== 'lighting') item.textContent = el.value || tPlain('modes.unnamed');
     if (item && list === 'lighting') {
       const layout = state.config.lighting[Number(index)];
       item.innerHTML = `${layoutSwatch(layout)}${esc(layout.name) || t('modes.unnamed')}`;
@@ -963,6 +1197,10 @@ function comboFromEvent(e) {
 }
 
 document.addEventListener('keydown', (e) => {
+  if (state.recording) {
+    recordKey(e);
+    return;
+  }
   const el = document.activeElement;
   if (el?.dataset?.keycap) {
     const plainTab = e.key === 'Tab' && !e.ctrlKey && !e.altKey && !e.metaKey;
@@ -975,6 +1213,12 @@ document.addEventListener('keydown', (e) => {
     el.classList.remove('flash');
     void el.offsetWidth; // restart the animation
     el.classList.add('flash');
+    if (/^macros\.\d+\.hotkey$/.test(el.dataset.keycap)) {
+      // The list and the clear button show the hotkey too.
+      changed();
+      document.querySelector(`[data-keycap="${el.dataset.keycap}"]`)?.focus();
+      return;
+    }
     changed(false);
     return;
   }
