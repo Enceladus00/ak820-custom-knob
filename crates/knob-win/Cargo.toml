@@ -8,6 +8,8 @@ publish = false
 
 [dependencies]
 knob-core = { path = "../knob-core" }
+hidapi = { version = "2.6.7", default-features = false, features = ["windows-native"] }
+knob-rgb = { path = "../knob-rgb" }
 log = "0.4.35"
 
 [dependencies.windows]

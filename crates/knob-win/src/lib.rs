@@ -4,6 +4,7 @@
 //!   dedicated thread with its own message loop.
 //! * [`output`]: injects keys, wheel and clicks with `SendInput`.
 //! * [`audio`]: per-app volume through Windows audio sessions.
+//! * [`lighting`]: applies lighting layouts to the keyboard.
 //! * [`process`]: exe names for windows and process ids.
 //! * [`autostart`]: the "Start with Windows" registry entry.
 
@@ -11,6 +12,7 @@ pub mod audio;
 pub mod autostart;
 pub mod clock;
 pub mod input;
+pub mod lighting;
 pub mod output;
 pub mod paths;
 pub mod process;

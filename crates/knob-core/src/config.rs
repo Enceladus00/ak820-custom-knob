@@ -32,6 +32,68 @@ pub struct Config {
     pub modes: Vec<Mode>,
     #[serde(rename = "profile")]
     pub profiles: Vec<Profile>,
+    /// Saved lighting layouts. Files written before these existed get the
+    /// built-in set.
+    #[serde(rename = "lighting", default = "default_layouts")]
+    pub layouts: Vec<LightingLayout>,
+}
+
+fn default_layouts() -> Vec<LightingLayout> {
+    Config::default_config().layouts
+}
+
+/// A named lighting setup. It reaches the keyboard only when the user applies
+/// it, because each write may be stored in the keyboard's flash.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct LightingLayout {
+    pub name: String,
+    /// Built-in effect number, 1 to 19.
+    pub effect: u8,
+    /// `#RRGGBB`.
+    pub color: String,
+    /// Cycle through colours instead of using `color`.
+    #[serde(default)]
+    pub colorful: bool,
+    /// 1 to 5.
+    pub brightness: u8,
+    /// 1 to 5.
+    pub speed: u8,
+}
+
+impl LightingLayout {
+    /// `color` as red, green, blue, if it is well formed.
+    pub fn rgb(&self) -> Option<[u8; 3]> {
+        let digits = self.color.strip_prefix('#')?;
+        if digits.len() != 6 || !digits.is_ascii() {
+            return None;
+        }
+        let channel = |at: usize| u8::from_str_radix(&digits[at..at + 2], 16).ok();
+        Some([channel(0)?, channel(2)?, channel(4)?])
+    }
+
+    /// Adds a message to `errors` for everything wrong with this layout.
+    pub fn check(&self, errors: &mut Vec<String>) {
+        let ctx = format!("lighting layout '{}'", self.name);
+        if self.name.trim().is_empty() {
+            errors.push("a lighting layout has no name".into());
+        }
+        if !(1..=knob_rgb::EFFECT_MAX).contains(&self.effect) {
+            errors.push(format!(
+                "{ctx}: effect must be 1 to {}",
+                knob_rgb::EFFECT_MAX
+            ));
+        }
+        if self.rgb().is_none() {
+            errors.push(format!("{ctx}: color must look like #66CCFF"));
+        }
+        if !knob_rgb::LEVEL_RANGE.contains(&self.brightness) {
+            errors.push(format!("{ctx}: brightness must be 1 to 5"));
+        }
+        if !knob_rgb::LEVEL_RANGE.contains(&self.speed) {
+            errors.push(format!("{ctx}: speed must be 1 to 5"));
+        }
+    }
 }
 
 /// Appearance and language of the program's own windows and popups.
@@ -441,6 +503,9 @@ impl Config {
                 }
             }
         }
+        for layout in &self.layouts {
+            layout.check(&mut errors);
+        }
         if errors.is_empty() {
             Ok(())
         } else {
@@ -550,6 +615,104 @@ mod tests {
             Config::from_toml(&bad),
             Err(ConfigError::Invalid(_))
         ));
+    }
+
+    fn without_layouts() -> String {
+        let cut = DEFAULT_CONFIG
+            .find("# ---------------------------------------------------------------- lighting")
+            .unwrap();
+        DEFAULT_CONFIG[..cut].to_string()
+    }
+
+    #[test]
+    fn older_files_get_the_built_in_layouts() {
+        let config = Config::from_toml(&without_layouts()).unwrap();
+        assert!(!config.layouts.is_empty());
+        assert_eq!(config.layouts, Config::default_config().layouts);
+    }
+
+    #[test]
+    fn every_layout_can_be_deleted() {
+        let mut config = Config::default_config();
+        config.layouts.clear();
+        let text = toml::to_string(&config).unwrap();
+        assert!(Config::from_toml(&text).unwrap().layouts.is_empty());
+    }
+
+    fn layout() -> LightingLayout {
+        LightingLayout {
+            name: "Test".into(),
+            effect: 1,
+            color: "#66CCFF".into(),
+            colorful: false,
+            brightness: 3,
+            speed: 3,
+        }
+    }
+
+    fn problems(layout: &LightingLayout) -> usize {
+        let mut errors = Vec::new();
+        layout.check(&mut errors);
+        errors.len()
+    }
+
+    #[test]
+    fn colors_parse_in_either_case() {
+        assert_eq!(layout().rgb(), Some([0x66, 0xCC, 0xFF]));
+        let lower = LightingLayout {
+            color: "#66ccff".into(),
+            ..layout()
+        };
+        assert_eq!(lower.rgb(), Some([0x66, 0xCC, 0xFF]));
+    }
+
+    #[test]
+    fn a_good_layout_has_no_problems() {
+        assert_eq!(problems(&layout()), 0);
+    }
+
+    #[test]
+    fn bad_layouts_are_reported() {
+        for bad in [
+            LightingLayout {
+                name: " ".into(),
+                ..layout()
+            },
+            LightingLayout {
+                effect: 0,
+                ..layout()
+            },
+            LightingLayout {
+                effect: 0x14,
+                ..layout()
+            },
+            LightingLayout {
+                effect: knob_rgb::EFFECT_CUSTOM,
+                ..layout()
+            },
+            LightingLayout {
+                color: "blue".into(),
+                ..layout()
+            },
+            LightingLayout {
+                color: "#12345".into(),
+                ..layout()
+            },
+            LightingLayout {
+                color: "#ééé".into(),
+                ..layout()
+            },
+            LightingLayout {
+                brightness: 0,
+                ..layout()
+            },
+            LightingLayout {
+                speed: 6,
+                ..layout()
+            },
+        ] {
+            assert_eq!(problems(&bad), 1, "{bad:?}");
+        }
     }
 
     #[test]

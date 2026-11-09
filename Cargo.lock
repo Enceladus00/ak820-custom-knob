@@ -1897,6 +1897,7 @@ dependencies = [
 name = "knob-core"
 version = "1.1.0"
 dependencies = [
+ "knob-rgb",
  "serde",
  "thiserror 2.0.21",
  "toml 1.2.0+spec-1.1.0",
@@ -1907,8 +1908,13 @@ name = "knob-probe"
 version = "1.1.0"
 dependencies = [
  "hidapi",
+ "knob-rgb",
  "windows",
 ]
+
+[[package]]
+name = "knob-rgb"
+version = "1.1.0"
 
 [[package]]
 name = "knob-settings"
@@ -1927,7 +1933,9 @@ dependencies = [
 name = "knob-win"
 version = "1.1.0"
 dependencies = [
+ "hidapi",
  "knob-core",
+ "knob-rgb",
  "log",
  "windows",
 ]

@@ -1,0 +1,8 @@
+[package]
+name = "knob-rgb"
+description = "Lighting protocol of the AK820 MAX 2.4 GHz receiver, with no hardware or Windows code"
+version.workspace = true
+edition.workspace = true
+publish = false
+
+[dependencies]

@@ -9,10 +9,16 @@
 //! so the log shows whether the knob can be told apart from those keys.
 //! `knob-probe mute` runs a short test of knob presses against the Fn mute key.
 //! Nothing is blocked or changed: every event passes through to Windows.
+//!
+//! `knob-probe hid-info` instead describes the keyboard's HID interfaces
+//! (report descriptors, vendor feature reports) and exits.
 
+mod descriptor;
 mod event;
 mod hid;
+mod hidinfo;
 mod names;
+mod rgb;
 mod win;
 
 use std::time::{Instant, SystemTime, UNIX_EPOCH};
@@ -34,6 +40,24 @@ fn main() {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_secs())
         .unwrap_or(0);
+
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    match args.first().map(String::as_str) {
+        Some("hid-info") => {
+            hidinfo::run(&dir, secs);
+            return;
+        }
+        Some("rgb-read") => {
+            rgb::read(&dir, secs, &args[1..]);
+            return;
+        }
+        Some("rgb-set") => {
+            rgb::set(&dir, secs, &args[1..]);
+            return;
+        }
+        _ => {}
+    }
+
     let log_path = dir.join(format!("probe-{secs}.log"));
 
     let logger = match event::start_logger(&log_path, win::request_quit) {

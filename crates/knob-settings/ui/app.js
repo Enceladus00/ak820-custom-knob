@@ -17,8 +17,35 @@ window.startPreview = (mock) => { invoke = mock; init(); };
 const PAGES = [
   { id: 'modes', icon: 'dial' },
   { id: 'apps', icon: 'apps' },
+  { id: 'lighting', icon: 'light' },
   { id: 'general', icon: 'gear' },
 ];
+
+// Effects a layout can use. Labels: lighting.effects.<value>.
+// `color`: the effect can use a chosen colour. `speed`: it has a speed.
+const EFFECTS = [
+  { value: 1, color: true, speed: false },
+  { value: 2, color: true, speed: true },
+  { value: 3, color: true, speed: true },
+  { value: 4, color: true, speed: true },
+  { value: 5, color: true, speed: true },
+  { value: 6, color: false, speed: true },
+  { value: 7, color: true, speed: true },
+  { value: 8, color: false, speed: true },
+  { value: 9, color: true, speed: true },
+  { value: 10, color: true, speed: true },
+  { value: 11, color: true, speed: true },
+  { value: 12, color: true, speed: true },
+  { value: 13, color: true, speed: true },
+  { value: 14, color: true, speed: true },
+  { value: 15, color: true, speed: true },
+  { value: 16, color: true, speed: true },
+  { value: 17, color: true, speed: true },
+  { value: 18, color: true, speed: true },
+  { value: 19, color: true, speed: true },
+];
+
+const effectInfo = (value) => EFFECTS.find((e) => e.value === value) ?? EFFECTS[0];
 
 const GESTURES = [
   { key: 'rotate', kind: 'rotate' },
@@ -59,6 +86,7 @@ const ICONS = {
   dial: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5.6 18.4A9 9 0 1 1 18.4 18.4"/><circle cx="12" cy="12" r="4"/><path d="M14.5 9.5 17 7"/></svg>',
   apps: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg>',
   gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>',
+  light: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.8 10.6c.7.6 1.1 1.3 1.2 2.4h5.2c.1-1.1.5-1.8 1.2-2.4A6 6 0 0 0 12 3Z"/></svg>',
   plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
 };
 
@@ -73,6 +101,8 @@ const state = {
   page: 'modes',
   modeIndex: 0,
   layer: '',
+  layoutIndex: 0,
+  applying: false,
   autostart: null, // { available, enabled }; null until known
   picker: null, // index of the profile the app picker adds to
   apps: null,
@@ -173,7 +203,8 @@ function render() {
 
   const main = $('#main');
   const scroll = main.scrollTop;
-  main.innerHTML = state.page === 'modes' ? modesPage() : state.page === 'apps' ? appsPage() : generalPage();
+  const pages = { modes: modesPage, apps: appsPage, lighting: lightingPage, general: generalPage };
+  main.innerHTML = pages[state.page]();
   main.scrollTop = scroll;
   renderPicker();
   updateChrome();
@@ -403,6 +434,91 @@ function renderAppList() {
   list.innerHTML = apps.length
     ? apps.map((a) => `<button class="app-row" data-cmd="pick-app" data-exe="${esc(a.exe)}"><strong>${esc(a.exe)}</strong><span>${esc(a.title)}</span></button>`).join('')
     : `<div class="muted pad">${t('apps.picker.none')}</div>`;
+}
+
+// ---------- lighting page
+
+const currentLayout = () => state.config.lighting[state.layoutIndex];
+
+function layoutSwatch(layout) {
+  const paint = layout.colorful || !effectInfo(layout.effect).color
+    ? 'conic-gradient(#ff4d4d, #ffd24d, #4dff88, #4dc3ff, #b14dff, #ff4d4d)'
+    : esc(layout.color);
+  return `<span class="swatch" style="background:${paint}"></span>`;
+}
+
+function lightingPage() {
+  const layouts = state.config.lighting;
+  state.layoutIndex = Math.min(state.layoutIndex, Math.max(0, layouts.length - 1));
+  const list = layouts.map((l, i) => `
+    <button class="mode-item ${i === state.layoutIndex ? 'active' : ''}" data-cmd="select-layout" data-index="${i}">
+      <span class="mode-name">${layoutSwatch(l)}${esc(l.name) || t('modes.unnamed')}</span>
+      <span class="mode-meta">${t(`lighting.effects.${l.effect}`)}</span>
+    </button>`).join('');
+  const layout = currentLayout();
+  return `<div class="modes">
+    <div class="mode-list">
+      ${list}
+      <button class="btn ghost" data-cmd="add-layout">${icon('plus')} ${t('lighting.newLayout')}</button>
+    </div>
+    ${layout ? layoutEditor(layout, state.layoutIndex) : `<div class="card muted">${t('lighting.empty')}</div>`}
+  </div>`;
+}
+
+const levelField = (i, key, value) => `<div class="range-field">
+  <div><strong>${t(`lighting.${key}`)}</strong></div>
+  <input type="range" min="1" max="5" step="1" value="${esc(value)}" data-bind="lighting.${i}.${key}" data-type="int" data-plain="1" aria-label="${esc(tPlain(`lighting.${key}`))}">
+  <output>${esc(value)}</output>
+</div>`;
+
+function layoutEditor(layout, i) {
+  const info = effectInfo(layout.effect);
+  const effects = EFFECTS.map((e) => `<option value="${e.value}" ${e.value === layout.effect ? 'selected' : ''}>${t(`lighting.effects.${e.value}`)}</option>`).join('');
+  const colorRow = info.color ? `<div class="setting-row">
+      <div><strong>${t('lighting.color')}</strong></div>
+      <div class="color-controls">
+        <label class="param check"><input type="checkbox" data-cmd="layout-colorful" ${layout.colorful ? 'checked' : ''}><span>${t('lighting.colorful')}</span></label>
+        ${layout.colorful ? '' : `<input type="color" data-bind="lighting.${i}.color" value="${esc(layout.color.toLowerCase())}" aria-label="${esc(tPlain('lighting.color'))}">`}
+      </div>
+    </div>` : '';
+  return `<section class="card editor">
+    <div class="editor-head">
+      <label class="field grow"><span>${t('lighting.name')}</span>
+        <input type="text" data-bind="lighting.${i}.name" value="${esc(layout.name)}" maxlength="40" spellcheck="false">
+      </label>
+      <div class="head-actions">
+        <button class="btn" data-cmd="duplicate-layout">${t('buttons.duplicate')}</button>
+        <button class="btn danger" data-cmd="delete-layout">${t('buttons.delete')}</button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div><strong>${t('lighting.effect')}</strong></div>
+      <select data-cmd="layout-effect" aria-label="${esc(tPlain('lighting.effect'))}">${effects}</select>
+    </div>
+    ${colorRow}
+    ${levelField(i, 'brightness', layout.brightness)}
+    ${info.speed ? levelField(i, 'speed', layout.speed) : ''}
+    <div class="apply-row">
+      <button class="btn primary" data-cmd="apply-layout" ${state.applying ? 'disabled' : ''}>${t('lighting.apply')}</button>
+      <small class="hint">${t('lighting.applyHint')}</small>
+    </div>
+  </section>`;
+}
+
+async function applyLayout() {
+  const layout = currentLayout();
+  if (!layout || state.applying) return;
+  state.applying = true;
+  render();
+  try {
+    await invoke('apply_lighting', { layout });
+    toast(tPlain('lighting.applied', { name: layout.name }));
+  } catch (e) {
+    const known = ['no_receiver', 'no_reply'].includes(e);
+    toast(known ? tPlain(`lighting.errors.${e}`) : tPlain('lighting.errors.other', { error: e }), true);
+  }
+  state.applying = false;
+  render();
 }
 
 // ---------- general page
@@ -640,6 +756,30 @@ const commands = {
     changed();
   },
 
+  'select-layout': (el) => { state.layoutIndex = Number(el.dataset.index); render(); },
+  'add-layout': () => {
+    const layouts = state.config.lighting;
+    layouts.push({ name: tPlain('lighting.newName'), effect: 1, color: '#66CCFF', colorful: false, brightness: 3, speed: 3 });
+    state.layoutIndex = layouts.length - 1;
+    changed();
+    const input = document.querySelector('.editor-head input');
+    input?.focus();
+    input?.select();
+  },
+  'duplicate-layout': () => {
+    const copy = clone(currentLayout());
+    copy.name = tPlain('modes.copyName', { name: copy.name });
+    state.config.lighting.splice(state.layoutIndex + 1, 0, copy);
+    state.layoutIndex += 1;
+    changed();
+  },
+  'delete-layout': () => {
+    if (!confirm(tPlain('lighting.confirmDelete', { name: currentLayout().name }))) return;
+    state.config.lighting.splice(state.layoutIndex, 1);
+    changed();
+  },
+  'apply-layout': () => applyLayout(),
+
   theme: (el) => { state.config.ui.theme = el.dataset.theme; changed(); },
   open: (el) => invoke('open_location', { which: el.dataset.which }).catch((e) => toast(String(e), true)),
   'restore-defaults': async () => {
@@ -674,6 +814,14 @@ const changeCommands = {
     match.exe = el.checked ? ['*'] : [];
     changed();
   },
+  'layout-effect': (el) => {
+    const layout = currentLayout();
+    layout.effect = Number(el.value);
+    // These effects always cycle colours; the keyboard has no single-colour form.
+    if (!effectInfo(layout.effect).color) layout.colorful = true;
+    changed();
+  },
+  'layout-colorful': (el) => { currentLayout().colorful = el.checked; changed(); },
   language: (el) => { state.config.ui.language = el.value; changed(); },
   // Applies at once, like the tray menu item; not part of Save.
   autostart: async (el) => {
@@ -707,12 +855,19 @@ document.addEventListener('input', (e) => {
   }
   if (!el.dataset.bind || el.type === 'checkbox') return;
   setPath(state.config, el.dataset.bind, coerce(el));
-  if (el.type === 'range') el.nextElementSibling.innerHTML = t('general.ms', { value: el.value });
-  // Keep the mode list in step with the name being typed.
-  const nameMatch = /^modes\.(\d+)\.name$/.exec(el.dataset.bind);
-  if (nameMatch) {
-    const item = document.querySelector(`.mode-item[data-index="${nameMatch[1]}"] .mode-name`);
-    if (item) item.textContent = el.value || tPlain('modes.unnamed');
+  if (el.type === 'range') {
+    el.nextElementSibling.innerHTML = el.dataset.plain ? esc(el.value) : t('general.ms', { value: el.value });
+  }
+  // Keep the list in step with the name being typed or the colour being picked.
+  const listMatch = /^(modes|lighting)\.(\d+)\.(name|color)$/.exec(el.dataset.bind);
+  if (listMatch) {
+    const [, list, index] = listMatch;
+    const item = document.querySelector(`.mode-item[data-index="${index}"] .mode-name`);
+    if (item && list === 'modes') item.textContent = el.value || tPlain('modes.unnamed');
+    if (item && list === 'lighting') {
+      const layout = state.config.lighting[Number(index)];
+      item.innerHTML = `${layoutSwatch(layout)}${esc(layout.name) || t('modes.unnamed')}`;
+    }
   }
   changed(false);
 });

@@ -7,7 +7,7 @@
 use std::fs;
 use std::path::Path;
 
-use knob_core::Config;
+use knob_core::{Config, LightingLayout};
 use knob_win::{autostart, paths};
 use serde::Serialize;
 use tauri::Manager;
@@ -123,6 +123,18 @@ fn open_location(which: String) -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+/// Sends a layout to the keyboard. On its own thread, because a sleeping
+/// keyboard takes over a second to time out.
+#[tauri::command(async)]
+fn apply_lighting(layout: LightingLayout) -> Result<(), String> {
+    let mut errors = Vec::new();
+    layout.check(&mut errors);
+    if let Some(problem) = errors.into_iter().next() {
+        return Err(problem);
+    }
+    knob_win::lighting::apply(&layout).map_err(|e| e.to_string())
+}
+
 #[derive(Serialize)]
 struct Autostart {
     /// False when the background program isn't next to this exe.
@@ -173,6 +185,7 @@ fn main() {
             save_config,
             running_apps,
             open_location,
+            apply_lighting,
             get_autostart,
             set_autostart
         ])

@@ -65,3 +65,67 @@ shift = { rotate = { action = "volume", step = 2 } }
 name = "Default"
 match = { exe = "*" }
 modes = ["volume", "scroll", "media"]
+
+# ---------------------------------------------------------------- lighting
+# Layouts you can apply from the Lighting page in Settings. A layout reaches
+# the keyboard only when you click Apply.
+#
+# effect:     1 Static, 2 Light up on press, 3 Go dark on press, 4 Drifting,
+#             5 Snowfall, 6 Blossoms, 7 Breathing, 8 Spectrum cycle, 9 Fountain,
+#             10 Colour crossing, 11 Wave, 12 Winding path, 13 Burst on press,
+#             14 Double strike, 15 Ripple, 16 Stream, 17 Layered peaks,
+#             18 Slanting rain, 19 Shuttle
+# colorful:   true cycles through colours instead of using `color`
+# brightness, speed: 1 to 5
+
+[[lighting]]
+name = "Light Blue"
+effect = 1
+color = "#66CCFF"
+brightness = 3
+speed = 3
+
+[[lighting]]
+name = "Warm White"
+effect = 1
+color = "#FFD9A0"
+brightness = 3
+speed = 3
+
+[[lighting]]
+name = "Red Breathing"
+effect = 7
+color = "#FF2020"
+brightness = 4
+speed = 2
+
+[[lighting]]
+name = "Ocean Wave"
+effect = 11
+color = "#0080FF"
+brightness = 4
+speed = 3
+
+[[lighting]]
+name = "Rainbow Wave"
+effect = 11
+color = "#FFFFFF"
+colorful = true
+brightness = 5
+speed = 3
+
+[[lighting]]
+name = "Spectrum Cycle"
+effect = 8
+color = "#FFFFFF"
+colorful = true
+brightness = 5
+speed = 3
+
+[[lighting]]
+name = "Ripple"
+effect = 15
+color = "#FFFFFF"
+colorful = true
+brightness = 4
+speed = 3

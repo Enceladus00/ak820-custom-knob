@@ -94,6 +94,9 @@ In **Settings**:
   combination.
 * **Apps:** which modes the knob has in which app. Entries are checked from
   the top; the first that matches the app in front wins.
+* **Lighting:** saved lighting layouts (effect, colour, brightness, speed).
+  Edit them, then click **Apply to keyboard**. It comes with seven, and it
+  works over the 2.4 GHz receiver.
 * **General:** Start with Windows, theme (light, dark, or same as Windows),
   language, long-press and double-press timing, and Restore defaults.
 
@@ -162,7 +165,8 @@ The workspace:
 | Crate | What it is |
 |---|---|
 | `knob-core` | Knob detection, gestures, modes and config, with no Windows code |
-| `knob-win` | Keyboard hook, Raw Input, sending keys, per-app volume |
+| `knob-rgb` | The lighting protocol, with no hardware code |
+| `knob-win` | Keyboard hook, Raw Input, sending keys, per-app volume, applying lighting |
 | `ak820-custom-knob` | The tray program |
 | `knob-settings` | The Settings window ([Tauri](https://tauri.app)) |
 | `knob-probe` | A diagnostic tool that logs what the keyboard sends |
