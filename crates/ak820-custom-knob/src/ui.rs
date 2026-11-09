@@ -287,7 +287,7 @@ fn drain_events() {
 }
 
 /// Title of the settings window (tauri.conf.json).
-const SETTINGS_TITLE: PCWSTR = w!("AK820 Knob Settings");
+const SETTINGS_TITLE: PCWSTR = w!("AK820 MAX Ultra Toolbox");
 
 /// When Settings was last started, so a double click doesn't start it twice.
 static SETTINGS_STARTED: Mutex<Option<std::time::Instant>> = Mutex::new(None);

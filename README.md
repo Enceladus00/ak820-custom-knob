@@ -1,17 +1,19 @@
-# AK820 Custom Knob
+# AK820 MAX Ultra Toolbox
 
-Free, open-source software for the knob on the **AJAZZ AK820 MAX Ultra**
-keyboard. It gives the knob new jobs on Windows:
+Free, open-source software that adds what the **AJAZZ AK820 MAX Ultra**
+keyboard is missing on Windows. It gives the knob new jobs:
 scrolling, zooming, media control, the volume of a single app, any key
-combination, and different functions in different apps. It can also set the
-keyboard's lighting.
+combination, and different functions in different apps. It also adds macros,
+a mouse you control from the keyboard, click-by-letter hints for any app or
+website, and lighting layouts.
 
-Only the knob changes. Every other key, including Fn+F2 / Fn+F3 for volume,
-works exactly as before. This is unofficial, free and
+By default only the knob changes: every other key, including Fn+F2 / Fn+F3
+for volume, works exactly as before. Macros, mouse mode and click hints stay
+off until you turn them on. This is unofficial, free and
 [open-source](#unofficial-free-and-open-source) software, with a
-[project website](https://enceladus00.github.io/ak820-custom-knob/) too.
+[project website](https://enceladus00.github.io/ak820-max-ultra-toolbox/) too.
 
-[![Download for Windows](https://img.shields.io/badge/Download-for%20Windows-2f6feb?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/Enceladus00/ak820-custom-knob/releases/latest/download/ak820-custom-knob-setup.exe)
+[![Download for Windows](https://img.shields.io/badge/Download-for%20Windows-2f6feb?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/Enceladus00/ak820-max-ultra-toolbox/releases/latest/download/ak820-custom-knob-setup.exe)
 
 ![The Modes page in Settings, showing what the knob does when turned, pressed and long-pressed](docs/images/settings-modes.png)
 
@@ -54,6 +56,38 @@ there.
 **Double press** is available too, for rarely needed actions. Modes that use
 it make a single press wait a moment to see whether a second one follows.
 
+## Macros
+
+Save a sequence of key presses, typed text, waits and mouse clicks, and start
+it with a hotkey or a knob gesture. Press **Record** to capture keys and the
+pauses between them, then edit the steps. Pressing the hotkey again while a
+macro runs stops it. Some games don't allow macros, so check their rules first.
+
+## Mouse mode
+
+Control the pointer from the keyboard, handy when you sit away from your desk.
+Turn it on in Settings, then press its hotkey (Ctrl+Alt+M by default) or a knob
+gesture:
+
+| Key | What it does |
+|---|---|
+| Arrow keys | Move the pointer |
+| Right Ctrl | Left click (hold to drag) |
+| Right Shift | Right click |
+| End | Middle click |
+| Page Up / Page Down | Scroll |
+| Home (hold) | Move slowly, for precise aiming |
+| Esc | Leave mouse mode |
+
+All other keys keep typing as usual.
+
+## Click hints
+
+No more pressing Tab over and over to reach a button. Turn it on in Settings,
+press its hotkey (Ctrl+Alt+H by default) or a knob gesture, and a small letter
+label appears on everything clickable in the app in front. Type a label to
+click it, or press Esc to cancel. It works in most apps and in Chrome and Edge.
+
 ## Lighting
 
 Save lighting layouts with an effect, a colour or colour cycling, brightness
@@ -91,7 +125,7 @@ function.
 ## Install
 
 1. Click **Download for Windows** above. Your browser downloads
-   [`ak820-custom-knob-setup.exe`](https://github.com/Enceladus00/ak820-custom-knob/releases/latest/download/ak820-custom-knob-setup.exe).
+   [`ak820-custom-knob-setup.exe`](https://github.com/Enceladus00/ak820-max-ultra-toolbox/releases/latest/download/ak820-custom-knob-setup.exe).
 2. Open the downloaded file. If Windows SmartScreen warns about an unknown
    publisher, choose *More info → Run anyway*; the program isn't code-signed
    yet. See [Privacy](#privacy) for exactly what it does.
@@ -99,7 +133,7 @@ function.
 4. At the end, the knob program starts and Settings opens. Turn the knob.
 
 Prefer not to install? The
-[Releases](https://github.com/Enceladus00/ak820-custom-knob/releases) page
+[Releases](https://github.com/Enceladus00/ak820-max-ultra-toolbox/releases) page
 also has `ak820-custom-knob-portable.zip`: unpack it anywhere and run
 `ak820-custom-knob.exe`, keeping both exe files in the same folder.
 
@@ -119,6 +153,8 @@ In **Settings**:
   combination.
 * **Apps:** which modes the knob has in which app. Entries are checked from
   the top; the first that matches the app in front wins.
+* **Macros:** record or build macros, and give them a hotkey.
+* **Mouse & hints:** turn on mouse mode and click hints and set their hotkeys.
 * **Lighting:** saved lighting layouts (effect, colour, brightness, speed).
   Edit them, then click **Apply to keyboard**. It comes with seven, and it
   works over the 2.4 GHz receiver.
@@ -161,7 +197,7 @@ and the measurements behind them in
 
 ## Uninstall
 
-Use *Settings → Apps → AK820 Custom Knob → Uninstall* in Windows. It asks
+Use *Settings → Apps → AK820 MAX Ultra Toolbox → Uninstall* in Windows. It asks
 whether to delete your settings and logs too. For the portable version, turn
 off *Start with Windows* in the tray menu, quit, and delete the folder.
 
@@ -213,6 +249,14 @@ combination. Turning clockwise and counter-clockwise can each have their own.
 Yes. The **Apps** page sets which modes the knob has in each app, and it
 switches automatically when another app comes to the front.
 
+**Can I use the AK820 MAX Ultra as a mouse?**
+Yes. Turn on **Mouse mode** and the arrow keys move the pointer, with the keys
+next to them for clicking and scrolling.
+
+**Can I record macros on the AK820 MAX Ultra?**
+Yes. On the **Macros** page press **Record**, press your keys, then give the
+macro a hotkey or bind it to the knob.
+
 **Do I need the official AJAZZ software or driver?**
 No. This program works on its own.
 
@@ -245,7 +289,7 @@ mode: middle click), Fn+F4 does that too.
 
 ## Unofficial, free and open source
 
-AK820 Custom Knob is a community project. It isn't made, endorsed or
+AK820 MAX Ultra Toolbox is a community project. It isn't made, endorsed or
 supported by AJAZZ.
 
 All of the code is public, so anyone can read exactly what it does, and
@@ -254,7 +298,7 @@ releases are built by GitHub Actions from that public code
 
 As the license says, it is provided as-is, without warranty, and the author
 isn't responsible for problems that come from using it. If something doesn't
-work, please [open an issue](https://github.com/Enceladus00/ak820-custom-knob/issues).
+work, please [open an issue](https://github.com/Enceladus00/ak820-max-ultra-toolbox/issues).
 
 ## License
 

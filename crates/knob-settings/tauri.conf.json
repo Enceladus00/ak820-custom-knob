@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "AK820 Knob Settings",
+  "productName": "AK820 MAX Ultra Toolbox",
   "version": "1.2.0",
   "identifier": "io.github.enceladus00.ak820-custom-knob",
   "build": {
@@ -11,7 +11,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "AK820 Knob Settings",
+        "title": "AK820 MAX Ultra Toolbox",
         "width": 1000,
         "height": 700,
         "minWidth": 780,

@@ -35,7 +35,7 @@ Every file the workflow builds gets a build provenance attestation. To check
 that a downloaded file was built by this repository's workflow:
 
 ```
-gh attestation verify ak820-custom-knob-setup.exe --repo Enceladus00/ak820-custom-knob
+gh attestation verify ak820-custom-knob-setup.exe --repo Enceladus00/ak820-max-ultra-toolbox
 ```
 
 ## Code signing (planned)

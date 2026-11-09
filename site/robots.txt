@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://enceladus00.github.io/ak820-custom-knob/sitemap.xml
+Sitemap: https://enceladus00.github.io/ak820-max-ultra-toolbox/sitemap.xml

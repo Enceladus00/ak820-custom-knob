@@ -6,7 +6,7 @@
   #error Pass the version: ISCC /DAppVersion=1.2.3 ak820-custom-knob.iss
 #endif
 
-#define AppName "AK820 Custom Knob"
+#define AppName "AK820 MAX Ultra Toolbox"
 #define DaemonExe "ak820-custom-knob.exe"
 #define SettingsExe "knob-settings.exe"
 #define RunKey "Software\Microsoft\Windows\CurrentVersion\Run"
@@ -19,8 +19,8 @@ AppName={#AppName}
 AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
 AppPublisher=Enceladus00
-AppPublisherURL=https://github.com/Enceladus00/ak820-custom-knob
-AppSupportURL=https://github.com/Enceladus00/ak820-custom-knob/issues
+AppPublisherURL=https://github.com/Enceladus00/ak820-max-ultra-toolbox
+AppSupportURL=https://github.com/Enceladus00/ak820-max-ultra-toolbox/issues
 VersionInfoVersion={#AppVersion}
 DefaultDirName={autopf}\{#AppName}
 DefaultGroupName={#AppName}
@@ -48,7 +48,7 @@ Name: "en"; MessagesFile: "compiler:Default.isl"
 [CustomMessages]
 en.AutostartTask=Start {#AppName} when I sign in to Windows
 en.DesktopTask=Create a desktop shortcut
-en.SettingsShortcut=AK820 Knob Settings
+en.SettingsShortcut=AK820 MAX Ultra Toolbox Settings
 en.LaunchNow=Start {#AppName} now
 en.OpenSettings=Open Settings to set up the knob
 en.WebViewDownloading=Downloading the Microsoft Edge WebView2 Runtime (needed by the Settings window)…
@@ -63,6 +63,11 @@ Name: "desktopicon"; Description: "{cm:DesktopTask}"; Flags: unchecked
 Source: "..\target\release\{#DaemonExe}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\target\release\{#SettingsExe}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\LICENSE"; DestDir: "{app}"; DestName: "LICENSE.txt"; Flags: ignoreversion
+
+[InstallDelete]
+; Shortcuts from before the program was renamed.
+Type: files; Name: "{group}\AK820 Custom Knob.lnk"
+Type: files; Name: "{group}\AK820 Knob Settings.lnk"
 
 [Icons]
 Name: "{group}\{#AppName}"; Filename: "{app}\{#DaemonExe}"

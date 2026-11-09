@@ -61,10 +61,10 @@ const LANGUAGES: &[(&str, Language)] = &[("en", en)];
 fn en(text: Text) -> Option<&'static str> {
     use Text::*;
     Some(match text {
-        Tooltip => "AK820 knob",
-        TooltipPaused => "AK820 knob - paused",
-        TooltipMode => "AK820 knob - {mode}",
-        TooltipNoKeyboard => "AK820 knob - keyboard not found",
+        Tooltip => "AK820 Toolbox",
+        TooltipPaused => "AK820 Toolbox - paused",
+        TooltipMode => "AK820 Toolbox - {mode}",
+        TooltipNoKeyboard => "AK820 Toolbox - keyboard not found",
         MenuNoMode => "No mode active",
         MenuNoKeyboard => "AK820 not found: plug in its 2.4 GHz receiver",
         MenuMode => "Mode: {mode}",
@@ -87,12 +87,12 @@ fn en(text: Text) -> Option<&'static str> {
         OsdNoSound => "{app}: no sound playing",
         ConfigErrorTitle => "Config file has an error",
         ConfigErrorDefaults => "Using the default settings. {error}",
-        CrashTitle => "AK820 knob stopped",
+        CrashTitle => "AK820 Toolbox stopped",
         CrashMessage => {
             "Something went wrong. The knob works as a normal volume knob until you restart the program."
         }
-        InputErrorTitle => "AK820 knob can't read the keyboard",
-        AlreadyRunning => "AK820 knob is already running (see the tray).",
+        InputErrorTitle => "AK820 Toolbox can't read the keyboard",
+        AlreadyRunning => "AK820 Toolbox is already running (see the tray).",
     })
 }
 

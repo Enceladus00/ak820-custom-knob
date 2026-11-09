@@ -12,8 +12,8 @@ fn main() {
         let mut res = winresource::WindowsResource::new();
         res.set_icon(ICON)
             .set_icon_with_id(ICON_DISCONNECTED, "2")
-            .set("FileDescription", "AK820 Custom Knob")
-            .set("ProductName", "AK820 Custom Knob");
+            .set("FileDescription", "AK820 MAX Ultra Toolbox")
+            .set("ProductName", "AK820 MAX Ultra Toolbox");
         res.compile().expect("cannot embed the icon");
     }
 }

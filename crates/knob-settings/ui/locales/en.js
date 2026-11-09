@@ -6,8 +6,8 @@
 
 registerLocale('en', 'English', {
   app: {
-    name: 'AK820 Knob',
-    subtitle: 'Settings',
+    name: 'AK820 MAX Ultra',
+    subtitle: 'Toolbox',
     footer: 'Changes apply as soon as you save.',
   },
 

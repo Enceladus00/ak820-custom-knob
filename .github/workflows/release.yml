@@ -7,7 +7,7 @@
 #
 # Every file also gets a build provenance attestation: anyone can check that it
 # was built here, from this repository, with
-#   gh attestation verify <file> --repo Enceladus00/ak820-custom-knob
+#   gh attestation verify <file> --repo Enceladus00/ak820-max-ultra-toolbox
 #
 # Code signing (SignPath Foundation) is added here once the project is
 # accepted; see docs/releasing.md.
@@ -80,5 +80,5 @@ jobs:
             dist/ak820-custom-knob-setup.exe `
             dist/ak820-custom-knob-portable.zip `
             --draft --verify-tag `
-            --title "AK820 Custom Knob ${{ github.ref_name }}" `
+            --title "AK820 MAX Ultra Toolbox ${{ github.ref_name }}" `
             --generate-notes

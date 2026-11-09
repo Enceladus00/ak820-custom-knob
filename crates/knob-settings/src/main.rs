@@ -30,7 +30,7 @@ const HEADER: &str = "\
 # ak820-custom-knob configuration, written by the Settings app.
 # You can still edit it by hand; comments are not kept when Settings saves.
 # The built-in default with comments explaining every option:
-# https://github.com/Enceladus00/ak820-custom-knob/blob/main/crates/knob-core/src/default-config.toml
+# https://github.com/Enceladus00/ak820-max-ultra-toolbox/blob/main/crates/knob-core/src/default-config.toml
 
 ";
 
