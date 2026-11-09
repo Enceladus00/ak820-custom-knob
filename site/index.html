@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Remap the AJAZZ AK820 MAX Knob on Windows | AK820 Custom Knob</title>
+  <meta name="description" content="Free, open-source software to remap the knob on the AJAZZ AK820 MAX: bind volume, scroll, zoom, media keys or any shortcut, with different functions per app.">
+  <link rel="canonical" href="https://enceladus00.github.io/ak820-custom-knob/">
+  <link rel="icon" href="images/icon.png">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Remap the AJAZZ AK820 MAX knob on Windows">
+  <meta property="og:description" content="Free, open-source and unofficial. Bind volume, scroll, zoom, media keys or any shortcut to the knob, with different functions per app.">
+  <meta property="og:url" content="https://enceladus00.github.io/ak820-custom-knob/">
+  <meta property="og:image" content="https://enceladus00.github.io/ak820-custom-knob/images/settings-modes.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "name": "AK820 Custom Knob",
+        "description": "Free, open-source and unofficial software to remap the knob on the AJAZZ AK820 MAX keyboard on Windows.",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Windows 10, Windows 11",
+        "license": "https://www.apache.org/licenses/LICENSE-2.0",
+        "downloadUrl": "https://github.com/Enceladus00/ak820-custom-knob/releases/latest/download/ak820-custom-knob-setup.exe",
+        "url": "https://enceladus00.github.io/ak820-custom-knob/",
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "How do I remap the knob on the AJAZZ AK820 MAX?", "acceptedAnswer": { "@type": "Answer", "text": "Install AK820 Custom Knob, open Settings, and on the Modes page choose what turning, pressing and long-pressing the knob should do. Save, and the knob uses the new functions right away." } },
+          { "@type": "Question", "name": "Can I bind a keyboard shortcut to the AK820 MAX knob?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Choose Press keys, click the key field and press any key or combination. Turning clockwise and counter-clockwise can each have their own." } },
+          { "@type": "Question", "name": "Can the knob do different things in different apps?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. The Apps page sets which modes the knob has in each app, and it switches automatically when another app comes to the front." } },
+          { "@type": "Question", "name": "Do I need the official AJAZZ software?", "acceptedAnswer": { "@type": "Answer", "text": "No. AK820 Custom Knob works on its own." } },
+          { "@type": "Question", "name": "Does it change my keyboard's firmware?", "acceptedAnswer": { "@type": "Answer", "text": "No. The knob functions all run on your PC and write nothing to the keyboard. Lighting settings are sent to the keyboard only when you click Apply, and they don't touch the firmware." } },
+          { "@type": "Question", "name": "Does it work with the AK820 Pro, AK820 MAX Plus or AK820 MAX HE?", "acceptedAnswer": { "@type": "Answer", "text": "It has been tested on an AK820 MAX Ultra over its 2.4 GHz receiver. Other models and versions use different hardware or haven't been tested." } },
+          { "@type": "Question", "name": "Is it official?", "acceptedAnswer": { "@type": "Answer", "text": "No. It is a free, open-source community project, not made or endorsed by AJAZZ, and provided as-is under the Apache 2.0 license." } }
+        ]
+      }
+    ]
+  }
+  </script>
+  <style>
+    :root {
+      --bg: #f5f6f8; --surface: #ffffff; --text: #1c1f24; --muted: #5d6573;
+      --border: #e1e4ea; --accent: #2f6feb; --accent-text: #ffffff; --soft: #e8effe;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #16181c; --surface: #1f2228; --text: #e8eaee; --muted: #a2aab8;
+        --border: #333842; --accent: #5b8dff; --accent-text: #10131a; --soft: #23314f;
+      }
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-text-size-adjust: 100%; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.6 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif; }
+    .wrap { max-width: 920px; margin: 0 auto; padding: 0 20px; }
+    header { padding: 64px 0 36px; }
+    .tag { display: inline-block; padding: 4px 12px; border-radius: 99px; background: var(--soft); color: var(--accent); font-size: 14px; font-weight: 600; }
+    h1 { margin: 16px 0 12px; font-size: clamp(32px, 6vw, 48px); line-height: 1.15; letter-spacing: -.02em; }
+    h2 { margin: 0 0 14px; font-size: 26px; letter-spacing: -.01em; }
+    h3 { margin: 22px 0 4px; font-size: 18px; }
+    p { margin: 0 0 12px; }
+    .lede { max-width: 680px; color: var(--muted); font-size: 19px; }
+    .actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 22px; }
+    .btn { display: inline-block; padding: 12px 22px; border-radius: 9px; border: 1px solid var(--border); background: var(--surface); color: var(--text); font-weight: 600; text-decoration: none; }
+    .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+    .btn:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    a { color: var(--accent); }
+    img { display: block; width: 100%; height: auto; border-radius: 12px; border: 1px solid var(--border); }
+    section { padding: 34px 0; border-top: 1px solid var(--border); }
+    .hero-shot { padding-bottom: 40px; }
+    ul { margin: 0 0 12px; padding-left: 22px; }
+    li { margin-bottom: 5px; }
+    .table { overflow-x: auto; margin-bottom: 12px; }
+    table { width: 100%; min-width: 540px; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); }
+    th, td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; font-size: 15px; }
+    th { font-weight: 600; }
+    code { padding: 2px 5px; border-radius: 5px; background: var(--soft); font: 14px/1.5 Consolas, ui-monospace, monospace; overflow-wrap: anywhere; }
+    .about { padding: 22px 24px; margin: 8px 0 0; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); }
+    .shot-gap { margin-top: 18px; }
+    footer { padding: 26px 0 44px; border-top: 1px solid var(--border); color: var(--muted); font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <span class="tag">Unofficial · Free · Open source</span>
+      <h1>Remap the AJAZZ AK820 MAX knob on Windows</h1>
+      <p class="lede">Bind the knob to volume, scrolling, zoom, media keys or any shortcut, with different functions in different apps. Every other key keeps working exactly as before.</p>
+      <div class="actions">
+        <a class="btn primary" href="https://github.com/Enceladus00/ak820-custom-knob/releases/latest/download/ak820-custom-knob-setup.exe">Download for Windows</a>
+        <a class="btn" href="https://github.com/Enceladus00/ak820-custom-knob">View the code on GitHub</a>
+      </div>
+    </header>
+
+    <div class="hero-shot">
+      <img src="images/settings-modes.png" width="2240" height="1414" alt="The Modes page in Settings, showing what the knob does when turned, pressed and long-pressed">
+    </div>
+
+    <section>
+      <h2>What you can bind to the knob</h2>
+      <p>The knob has three gestures: turn, press and long press. Each mode gives them a job, and a long press switches to the next mode.</p>
+      <ul>
+        <li>System volume, or the volume of only the app in front</li>
+        <li>Mute</li>
+        <li>Scrolling up, down or sideways, and zoom</li>
+        <li>Any key or key combination, with a different one per direction</li>
+        <li>Mouse clicks: left, middle or right</li>
+        <li>Different functions while you hold Ctrl, Shift, Alt or Win</li>
+      </ul>
+      <div class="table">
+        <table>
+          <thead><tr><th>Mode</th><th>Turn</th><th>Press</th><th>Ctrl + turn</th><th>Shift + turn</th></tr></thead>
+          <tbody>
+            <tr><td>Volume</td><td>System volume</td><td>Mute</td><td>Volume of the app in front</td><td></td></tr>
+            <tr><td>Scroll</td><td>Scroll</td><td>Middle click</td><td>Zoom</td><td>Scroll sideways</td></tr>
+            <tr><td>Media</td><td>Right / left arrow</td><td>Play / pause</td><td>Next / previous track</td><td>System volume</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>These are the three built-in modes. You can change them or add your own.</p>
+    </section>
+
+    <section>
+      <h2>Different knob functions in different apps</h2>
+      <p>Choose which modes the knob has in each app, for example a Timeline mode in your video editor. It switches automatically when another app comes to the front.</p>
+      <img class="shot-gap" loading="lazy" src="images/settings-apps.png" width="2240" height="1360" alt="The Apps page in Settings, with a video editor using its own Timeline mode and every other app using the default modes">
+    </section>
+
+    <section>
+      <h2>Keyboard lighting layouts</h2>
+      <p>Save lighting layouts with an effect, a colour or colour cycling, brightness and speed, then apply one with a click. It comes with seven layouts and 19 effects.</p>
+      <img class="shot-gap" loading="lazy" src="images/settings-lighting.png" width="2240" height="1360" alt="The Lighting page in Settings, with a list of saved layouts and the controls for one of them">
+    </section>
+
+    <section>
+      <h2>Check which AK820 MAX you have</h2>
+      <p>Different versions of the AK820 MAX are sold under the same name and use different hardware. This program works over a 2.4 GHz receiver that Windows sees as <code>VID_0C45&amp;PID_FEFC</code>, and it has been tested on an AK820 MAX Ultra. With the receiver plugged in, run this in PowerShell:</p>
+      <p><code>Get-PnpDevice -PresentOnly | Where-Object InstanceId -match 'VID_0C45&amp;PID_FEFC'</code></p>
+      <p>If it lists devices, you have the supported receiver. You can also just install it: if the tray icon stays grey with a red badge while the receiver is plugged in, your version isn't supported yet. Nothing changes for your keyboard in that case. The USB cable and Bluetooth aren't tested yet.</p>
+    </section>
+
+    <section>
+      <h2>Questions</h2>
+      <h3>How do I remap the knob on the AJAZZ AK820 MAX?</h3>
+      <p>Install AK820 Custom Knob, open Settings, and on the Modes page choose what turning, pressing and long-pressing the knob should do. Save, and the knob uses the new functions right away.</p>
+      <h3>Can I bind a keyboard shortcut to the AK820 MAX knob?</h3>
+      <p>Yes. Choose <em>Press keys</em>, click the key field and press any key or combination. Turning clockwise and counter-clockwise can each have their own.</p>
+      <h3>Can the knob do different things in different apps?</h3>
+      <p>Yes. The Apps page sets which modes the knob has in each app, and it switches automatically when another app comes to the front.</p>
+      <h3>Do I need the official AJAZZ software?</h3>
+      <p>No. AK820 Custom Knob works on its own.</p>
+      <h3>Does it change my keyboard's firmware?</h3>
+      <p>No. The knob functions all run on your PC and write nothing to the keyboard. Lighting settings are sent to the keyboard only when you click Apply, and they don't touch the firmware.</p>
+      <h3>Does it work with the AK820 Pro, AK820 MAX Plus or AK820 MAX HE?</h3>
+      <p>It has been tested on an AK820 MAX Ultra over its 2.4 GHz receiver. Other models and versions use different hardware or haven't been tested.</p>
+      <h3>Does it work on Mac or Linux?</h3>
+      <p>Not at the moment. It needs Windows 10 or 11, 64-bit.</p>
+    </section>
+
+    <section>
+      <h2>Unofficial, free and open source</h2>
+      <div class="about">
+        <p>AK820 Custom Knob is a community project. It isn't made, endorsed or supported by AJAZZ.</p>
+        <p>All of the code is public under the Apache 2.0 license, so anyone can read exactly what it does. Releases are built by GitHub Actions from that public code, it needs no account, and it never connects to the internet.</p>
+        <p>As the license says, it is provided as-is, without warranty, and the author isn't responsible for problems that come from using it. If something doesn't work, please <a href="https://github.com/Enceladus00/ak820-custom-knob/issues">open an issue</a>.</p>
+      </div>
+    </section>
+
+    <footer>
+      AK820 Custom Knob · <a href="https://github.com/Enceladus00/ak820-custom-knob">GitHub</a> · <a href="https://github.com/Enceladus00/ak820-custom-knob/blob/main/LICENSE">Apache 2.0</a><br>
+      AJAZZ and AK820 are names of their respective owner and are used here only to say which keyboard this software is for.
+    </footer>
+  </div>
+</body>
+</html>

@@ -7,7 +7,9 @@ combination, and different functions in different apps. It can also set the
 keyboard's lighting.
 
 Only the knob changes. Every other key, including Fn+F2 / Fn+F3 for volume,
-works exactly as before.
+works exactly as before. This is unofficial, free and
+[open-source](#unofficial-free-and-open-source) software, with a
+[project website](https://enceladus00.github.io/ak820-custom-knob/) too.
 
 [![Download for Windows](https://img.shields.io/badge/Download-for%20Windows-2f6feb?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/Enceladus00/ak820-custom-knob/releases/latest/download/ak820-custom-knob-setup.exe)
 
@@ -67,6 +69,18 @@ layouts and 19 effects. The lights only change when you apply a layout.
 | AJAZZ AK820 MAX (tested on a MAX Ultra) | 2.4 GHz dongle | Supported |
 | | USB cable | Not tested yet |
 | | Bluetooth | Not tested yet |
+
+**Which AK820 MAX do you have?** Different versions are sold under the same
+name and use different hardware. This program works over a 2.4 GHz receiver
+that Windows sees as `VID_0C45&PID_FEFC`. With the receiver plugged in, this
+PowerShell command lists it if you have the supported one:
+
+```powershell
+Get-PnpDevice -PresentOnly | Where-Object InstanceId -match 'VID_0C45&PID_FEFC'
+```
+
+You can also just install it: if the tray icon stays grey with a red badge
+while the receiver is plugged in, your version isn't supported yet.
 
 Windows 10 or 11, 64-bit. When the knob isn't recognised (for example over
 the cable), the program does nothing and the knob keeps its normal volume
@@ -180,6 +194,33 @@ The workspace:
 | `knob-settings` | The Settings window ([Tauri](https://tauri.app)) |
 | `knob-probe` | A diagnostic tool that logs what the keyboard sends |
 
+## FAQ
+
+**How do I remap the knob on the AJAZZ AK820 MAX?**
+Install the program, open Settings, and on the **Modes** page choose what
+turning, pressing and long-pressing the knob should do. Save, and the knob
+uses the new functions right away.
+
+**Can I bind a keyboard shortcut to the AK820 MAX knob?**
+Yes. Choose *Press keys*, click the key field and press any key or
+combination. Turning clockwise and counter-clockwise can each have their own.
+
+**Can the knob do different things in different apps?**
+Yes. The **Apps** page sets which modes the knob has in each app, and it
+switches automatically when another app comes to the front.
+
+**Do I need the official AJAZZ software or driver?**
+No. This program works on its own.
+
+**Does it change my keyboard's firmware?**
+No. The knob functions all run on your PC and write nothing to the keyboard.
+Lighting settings are sent to the keyboard only when you click *Apply to
+keyboard*, and they don't touch the firmware.
+
+**Does it work with the AK820 Pro, AK820 MAX Plus or AK820 MAX HE?**
+It has been tested on an AK820 MAX Ultra over its 2.4 GHz receiver. Other
+models and versions use different hardware or haven't been tested.
+
 ## Contributing
 
 Everyone is more than welcome to build on this project, with features for
@@ -197,8 +238,19 @@ signal for both, and both are finger presses of similar length, so they
 can't be told apart. In a mode where the press does something else (Scroll
 mode: middle click), Fn+F4 does that too.
 
+## Unofficial, free and open source
+
+AK820 Custom Knob is a community project. It isn't made, endorsed or
+supported by AJAZZ.
+
+All of the code is public, so anyone can read exactly what it does, and
+releases are built by GitHub Actions from that public code
+([how to check a download](docs/releasing.md#checking-a-download)).
+
+As the license says, it is provided as-is, without warranty, and the author
+isn't responsible for problems that come from using it. If something doesn't
+work, please [open an issue](https://github.com/Enceladus00/ak820-custom-knob/issues).
+
 ## License
 
 [Apache License 2.0](LICENSE).
-
-This is an independent project, not affiliated with or endorsed by AJAZZ.
