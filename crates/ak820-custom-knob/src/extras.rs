@@ -289,27 +289,27 @@ impl Extras {
             log::info!("remap: {} rule(s)", remaps.len());
         }
         input::set_remaps(remaps);
-        let mut wanted: Vec<(KeyCombo, HotkeyId)> = config
+        let mut wanted: Vec<(KeyCombo, HotkeyId, &[String])> = config
             .macros
             .iter()
             .enumerate()
-            .filter_map(|(i, m)| m.hotkey.map(|k| (k, HotkeyId::Macro(i))))
+            .filter_map(|(i, m)| m.hotkey.map(|k| (k, HotkeyId::Macro(i), m.apps.as_slice())))
             .collect();
         if config.mouse.enabled
             && let Some(combo) = config.mouse.toggle
         {
-            wanted.push((combo, HotkeyId::MouseToggle));
+            wanted.push((combo, HotkeyId::MouseToggle, &[]));
         }
         if config.hints.enabled
             && let Some(combo) = config.hints.hotkey
         {
-            wanted.push((combo, HotkeyId::Hints));
+            wanted.push((combo, HotkeyId::Hints, &[]));
         }
         let hotkeys = wanted
             .into_iter()
-            .filter_map(|(combo, id)| {
+            .filter_map(|(combo, id, apps)| {
                 let resolved = output::with_layout_vk(combo)?;
-                Hotkey::from_combo(resolved, id)
+                Some(Hotkey::from_combo(resolved, id)?.for_apps(apps))
             })
             .collect();
         input::set_hotkeys(hotkeys);
@@ -458,8 +458,43 @@ fn cancelled() -> bool {
     MACRO_CANCEL.load(Ordering::SeqCst)
 }
 
+/// Keys a macro is holding down. Dropping it lets go of them, so they are
+/// released however the macro ends: finished, stopped or crashed.
+struct HeldKeys(Vec<u16>);
+
+impl HeldKeys {
+    fn press(&mut self, vk: u16) {
+        output::remap_key(vk, true);
+        if !self.0.contains(&vk) {
+            self.0.push(vk);
+        }
+    }
+
+    fn release(&mut self, vk: u16) {
+        output::remap_key(vk, false);
+        self.0.retain(|&k| k != vk);
+    }
+}
+
+impl Drop for HeldKeys {
+    fn drop(&mut self) {
+        for vk in self.0.drain(..).rev() {
+            output::remap_key(vk, false);
+        }
+    }
+}
+
+/// The key a hold or release step means, on the layout in use now.
+fn step_key(key: KeyCombo) -> Option<u16> {
+    match key.key {
+        Key::Vk(vk) => Some(vk),
+        Key::Char(c) => output::plain_vk(c),
+    }
+}
+
 fn run_macro(item: &MacroDef) {
     log::info!("macro: {}", item.name);
+    let mut held = HeldKeys(Vec::new());
     let rounds = if item.until_stopped {
         u32::MAX
     } else {
@@ -475,6 +510,27 @@ fn run_macro(item: &MacroDef) {
                 MacroStep::Text { text } => output::text(text),
                 MacroStep::Click { button } => output::click(*button),
                 MacroStep::Wait { ms } => sleep_cancellable(*ms),
+                MacroStep::KeyDown { key } => {
+                    if let Some(vk) = step_key(*key) {
+                        held.press(vk);
+                    }
+                }
+                MacroStep::KeyUp { key } => {
+                    if let Some(vk) = step_key(*key) {
+                        held.release(vk);
+                    }
+                }
+                MacroStep::Move { x, y, relative } => {
+                    if *relative {
+                        output::move_pointer(*x, *y);
+                    } else {
+                        output::pointer_to(*x, *y);
+                    }
+                }
+                MacroStep::Scroll {
+                    notches,
+                    horizontal,
+                } => output::wheel(*notches, *horizontal),
             }
             thread::sleep(STEP_GAP);
         }

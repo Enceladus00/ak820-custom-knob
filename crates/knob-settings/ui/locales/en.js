@@ -202,8 +202,15 @@ registerLocale('en', 'English', {
     stop: 'Stop recording',
     recording: '<strong>Recording.</strong> Press keys now; they are added as steps, with the pauses between them. Click Stop recording when you’re done.',
     noSteps: 'No steps yet. Record some, or add them by hand.',
-    note: 'Recording only captures keys pressed in this window. Text is stored unencrypted in your config file, so don’t put passwords in a macro. Some games don’t allow macros, so check their rules first.',
-    steps: { keys: 'Press keys', text: 'Type text', wait: 'Wait', click: 'Mouse click' },
+    note: 'A key held down by a macro is always let go when the macro ends or is stopped. Recording only captures keys pressed in this window. Text is stored unencrypted in your config file, so don’t put passwords in a macro. Some games don’t allow macros, so check their rules first.',
+    steps: {
+      keys: 'Press keys', text: 'Type text', wait: 'Wait', click: 'Mouse click',
+      key_down: 'Hold key down', key_up: 'Let go of key', move: 'Move pointer', scroll: 'Scroll',
+    },
+    where: 'Hotkey works in',
+    whereHint: 'Limit it to some apps to use the same hotkey for different macros in different apps.',
+    relative: 'From where the pointer is',
+    notches: 'wheel steps (minus scrolls down)',
   },
 
   controls: {

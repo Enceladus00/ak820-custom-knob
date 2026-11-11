@@ -34,7 +34,7 @@ not made by AJAZZ. It's free and all of the code is here.
 <tr>
 <td><b>Key remapping</b><br>Any key becomes another key or a shortcut</td>
 <td><b>Long and double press</b><br>More actions on one knob</td>
-<td><b>Macros</b><br>Record keys, text, waits and clicks</td>
+<td><b>Macros</b><br>Keys, text, clicks, holds and pointer moves</td>
 </tr>
 <tr>
 <td><b>Mouse mode</b><br>Move the pointer with the arrow keys</td>
@@ -109,10 +109,15 @@ never apply while Settings is in front, so you can always undo one there, and
 
 ## Macros
 
-A macro is a list of key presses, typed text, waits and mouse clicks, started
-by a hotkey or a knob gesture. Press **Record** to capture keys and the pauses
-between them, then edit the steps. It can repeat a set number of times or until
-you stop it with its hotkey or Esc.
+A macro is a list of steps, started by a hotkey or a knob gesture: key presses,
+typed text, waits, mouse clicks, holding a key down and letting go of it,
+moving the pointer, and scrolling. Press **Record** to capture keys and the
+pauses between them, then edit the steps. It can repeat a set number of times
+or until you stop it with its hotkey or Esc, and a key it holds down is always
+let go when it ends.
+
+A macro's hotkey can work everywhere or only in the apps you pick, so the same
+hotkey can run a different macro in each app.
 
 Macro text sits unencrypted in the config file, so keep passwords out of it.
 Some games ban macros; check before you use one there.

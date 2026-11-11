@@ -131,8 +131,8 @@ const state = {
   autostart: null, // { available, enabled }; null until known
   daemon: null, // { running, available }; null until known
   version: '',
-  picker: null, // index of the profile or remap the app picker adds to
-  pickerFor: 'profiles', // 'profiles' or 'remaps'
+  picker: null, // index of the profile, remap or macro the app picker adds to
+  pickerFor: 'profiles', // 'profiles', 'remaps' or 'macros'
   apps: null,
   appFilter: '',
   saving: false,
@@ -170,6 +170,7 @@ function fromRust(raw) {
     if (typeof p.match.exe === 'string') p.match.exe = [p.match.exe];
   }
   for (const r of config.remaps) r.apps ??= [];
+  for (const m of config.macros) m.apps ??= [];
   return config;
 }
 
@@ -487,9 +488,9 @@ function remapRow(rule, i) {
 // The exe list the open app picker adds to.
 function pickerList() {
   if (state.picker == null) return null;
-  return state.pickerFor === 'remaps'
-    ? state.config.remaps[state.picker]?.apps
-    : state.config.profiles[state.picker]?.match.exe;
+  if (state.pickerFor === 'remaps') return state.config.remaps[state.picker]?.apps;
+  if (state.pickerFor === 'macros') return state.config.macros[state.picker]?.apps;
+  return state.config.profiles[state.picker]?.match.exe;
 }
 
 function renderPicker() {
@@ -622,7 +623,7 @@ async function applyLayout() {
 // ---------- macros page
 
 const currentMacro = () => state.config.macros[state.macroIndex];
-const STEP_TYPES = ['keys', 'text', 'wait', 'click'];
+const STEP_TYPES = ['keys', 'text', 'wait', 'click', 'key_down', 'key_up', 'move', 'scroll'];
 
 function macrosPage() {
   const macros = state.config.macros;
@@ -644,6 +645,23 @@ function macrosPage() {
 
 function stepFields(step, path) {
   if (step.step === 'keys') return keyParam(`${path}.keys`, step.keys, t('macros.steps.keys'));
+  if (step.step === 'key_down' || step.step === 'key_up') {
+    return `<div class="param keyfield single">
+      <span class="param-label">${t(`macros.steps.${step.step}`)}</span>
+      <input class="keycap" readonly data-keycap="${path}.key" data-keymode="single" value="${esc(step.key)}" title="${esc(tPlain('remap.fromTitle'))}" aria-label="${esc(tPlain(`macros.steps.${step.step}`))}">
+    </div>`;
+  }
+  if (step.step === 'move') {
+    return `<span class="step-kind">${t('macros.steps.move')}</span>
+      ${numberParam(`${path}.x`, step.x, -100000, 100000, 'x')}
+      ${numberParam(`${path}.y`, step.y, -100000, 100000, 'y')}
+      ${checkParam(`${path}.relative`, step.relative, t('macros.relative'))}`;
+  }
+  if (step.step === 'scroll') {
+    return `<span class="step-kind">${t('macros.steps.scroll')}</span>
+      ${numberParam(`${path}.notches`, step.notches, -100, 100, t('macros.notches'))}
+      ${checkParam(`${path}.horizontal`, step.horizontal, t('params.sideways'))}`;
+  }
   if (step.step === 'text') {
     return `<label class="field grow"><span>${t('macros.steps.text')}</span>
       <input type="text" data-bind="${path}.text" value="${esc(step.text)}" spellcheck="false"></label>`;
@@ -688,6 +706,10 @@ function macroEditor(item, i) {
       </div>
     </div>
     <div class="setting-row">
+      <div><strong>${t('macros.where')}</strong><small>${t('macros.whereHint')}</small></div>
+      <div class="chips">${macroApps(item, i)}</div>
+    </div>
+    <div class="setting-row">
       <div><strong>${t('macros.repeat')}</strong></div>
       <div class="color-controls">
         ${checkParam(`macros.${i}.until_stopped`, item.until_stopped, t('macros.untilStopped'))}
@@ -707,6 +729,14 @@ function macroEditor(item, i) {
     ${steps || `<p class="hint">${t('macros.noSteps')}</p>`}
     <p class="hint">${t('macros.note')}</p>
   </section>`;
+}
+
+function macroApps(item, i) {
+  const remove = esc(tPlain('apps.remove'));
+  const chips = item.apps.length
+    ? item.apps.map((exe, k) => `<span class="chip">${esc(exe)}<button data-cmd="macro-remove-app" data-index="${i}" data-app="${k}" title="${remove}">×</button></span>`).join('')
+    : `<span class="chip all">${t('apps.everyApp')}</span>`;
+  return `${chips}<button class="btn small" data-cmd="open-macro-picker" data-index="${i}">${icon('plus')} ${item.apps.length ? t('apps.addApp') : t('remap.onlyIn')}</button>`;
 }
 
 function renameMacroRefs(from, to) {
@@ -1071,6 +1101,11 @@ const commands = {
   'open-picker': (el) => openPicker(Number(el.dataset.profile)),
   'close-picker': () => { state.picker = null; renderPicker(); },
   'open-remap-picker': (el) => openPicker(Number(el.dataset.index), 'remaps'),
+  'open-macro-picker': (el) => openPicker(Number(el.dataset.index), 'macros'),
+  'macro-remove-app': (el) => {
+    state.config.macros[Number(el.dataset.index)].apps.splice(Number(el.dataset.app), 1);
+    changed();
+  },
   'remap-remove-app': (el) => {
     state.config.remaps[Number(el.dataset.index)].apps.splice(Number(el.dataset.app), 1);
     changed();
@@ -1107,7 +1142,7 @@ const commands = {
   'select-macro': (el) => { state.macroIndex = Number(el.dataset.index); state.recording = null; render(); },
   'add-macro': () => {
     const macros = state.config.macros;
-    macros.push({ name: uniqueMacroName(tPlain('macros.newName')), repeat: 1, steps: [] });
+    macros.push({ name: uniqueMacroName(tPlain('macros.newName')), repeat: 1, apps: [], steps: [] });
     state.macroIndex = macros.length - 1;
     state.recording = null;
     changed();
@@ -1200,7 +1235,11 @@ const commands = {
 // Commands fired by <select> / checkbox changes.
 const changeCommands = {
   'step-add': (el) => {
-    const defaults = { keys: { keys: 'Enter' }, text: { text: 'Text' }, wait: { ms: 200 }, click: { button: 'left' } };
+    const defaults = {
+      keys: { keys: 'Enter' }, text: { text: 'Text' }, wait: { ms: 200 }, click: { button: 'left' },
+      key_down: { key: 'LeftShift' }, key_up: { key: 'LeftShift' },
+      move: { x: 100, y: 0, relative: true }, scroll: { notches: 3, horizontal: false },
+    };
     if (!el.value) return;
     currentMacro().steps.push({ step: el.value, ...defaults[el.value] });
     changed();

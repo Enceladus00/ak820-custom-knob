@@ -14,11 +14,13 @@ pub enum HotkeyId {
     Hints,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Hotkey {
     pub vk: u16,
     pub mods: Modifiers,
     pub id: HotkeyId,
+    /// Lower-case exe names it works in. Empty means every app.
+    pub apps: Vec<String>,
 }
 
 impl Hotkey {
@@ -30,9 +32,16 @@ impl Hotkey {
                 vk,
                 mods: combo.mods,
                 id,
+                apps: Vec::new(),
             }),
             Key::Char(_) => None,
         }
+    }
+
+    /// Limits the hotkey to these apps.
+    pub fn for_apps(mut self, apps: &[String]) -> Self {
+        self.apps = apps.iter().map(|a| a.trim().to_lowercase()).collect();
+        self
     }
 }
 
@@ -217,6 +226,22 @@ impl Router {
             .collect()
     }
 
+    /// The hotkey this press sets off. One limited to the app in front wins
+    /// over one that works everywhere.
+    fn hotkey_for(&self, key: KeyInfo) -> Option<&Hotkey> {
+        let pressed = |h: &&Hotkey| h.vk == key.vk && h.mods == key.mods;
+        self.hotkeys
+            .iter()
+            .filter(pressed)
+            .find(|h| h.apps.contains(&self.foreground))
+            .or_else(|| {
+                self.hotkeys
+                    .iter()
+                    .filter(pressed)
+                    .find(|h| h.apps.is_empty())
+            })
+    }
+
     fn remap_for(&self, vk: u16) -> Option<RemapOutput> {
         if self.hotkeys_suspended {
             return None;
@@ -315,10 +340,7 @@ impl Router {
             };
         }
         if !self.hotkeys_suspended
-            && let Some(hotkey) = self
-                .hotkeys
-                .iter()
-                .find(|h| h.vk == key.vk && h.mods == key.mods)
+            && let Some(hotkey) = self.hotkey_for(key)
         {
             return Decision {
                 swallow: true,
@@ -728,6 +750,39 @@ mod tests {
         let caps = router.handle(press(CAPS));
         assert_eq!(caps.event, Some(RouterEvent::HintCancel));
         assert_eq!(caps.send, Some(RemapSend::Down(0x1B)));
+    }
+
+    #[test]
+    fn an_app_hotkey_works_only_there_and_wins_over_a_general_one() {
+        let combo: KeyCombo = "Ctrl+Alt+M".parse().unwrap();
+        let mut router = Router::default();
+        router.set_hotkeys(vec![
+            Hotkey::from_combo(combo, HotkeyId::MouseToggle).unwrap(),
+            Hotkey::from_combo(combo, HotkeyId::Macro(0))
+                .unwrap()
+                .for_apps(&["Code.exe".to_string()]),
+            Hotkey::from_combo("Ctrl+Alt+J".parse().unwrap(), HotkeyId::Macro(1))
+                .unwrap()
+                .for_apps(&["code.exe".to_string()]),
+        ]);
+        router.set_foreground("notepad.exe");
+        assert_eq!(
+            router.handle(ctrl_alt(0x4D)).event,
+            Some(RouterEvent::Hotkey(HotkeyId::MouseToggle))
+        );
+        router.handle(release(0x4D));
+        assert_eq!(router.handle(ctrl_alt(0x4A)).event, None);
+        router.handle(release(0x4A));
+        router.set_foreground("code.exe");
+        assert_eq!(
+            router.handle(ctrl_alt(0x4D)).event,
+            Some(RouterEvent::Hotkey(HotkeyId::Macro(0)))
+        );
+        router.handle(release(0x4D));
+        assert_eq!(
+            router.handle(ctrl_alt(0x4A)).event,
+            Some(RouterEvent::Hotkey(HotkeyId::Macro(1)))
+        );
     }
 
     #[test]

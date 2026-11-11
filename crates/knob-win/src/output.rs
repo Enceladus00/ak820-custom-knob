@@ -87,8 +87,9 @@ pub fn remap(send: RemapSend) {
     }
 }
 
-/// Presses or releases a key in place of a remapped one. It carries the key's
-/// scan code too, because games that read scan codes ignore a key without one.
+/// Presses or releases a key for a remap or a macro's hold step. It carries the
+/// key's scan code too, because games that read scan codes ignore a key
+/// without one.
 pub fn remap_key(vk: u16, down: bool) {
     let mut input = key_input(vk, down);
     let scan = unsafe { MapVirtualKeyW(vk.into(), MAPVK_VK_TO_VSC) };
@@ -272,6 +273,13 @@ pub fn move_pointer(dx: i32, dy: i32) {
         if GetCursorPos(&mut at).is_ok() {
             let _ = SetCursorPos(at.x + dx, at.y + dy);
         }
+    }
+}
+
+/// Moves the pointer to a screen position.
+pub fn pointer_to(x: i32, y: i32) {
+    unsafe {
+        let _ = SetCursorPos(x, y);
     }
 }
 

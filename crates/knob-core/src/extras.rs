@@ -21,6 +21,9 @@ pub struct MacroDef {
     /// Keep repeating until stopped, ignoring `repeat`.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub until_stopped: bool,
+    /// Exe names the hotkey works in. Empty means every app.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub apps: Vec<String>,
     pub steps: Vec<MacroStep>,
 }
 
@@ -31,15 +34,46 @@ fn one() -> u32 {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "step", rename_all = "snake_case")]
 pub enum MacroStep {
-    Keys { keys: KeyCombo },
-    Text { text: String },
-    Wait { ms: u32 },
-    Click { button: MouseButton },
+    Keys {
+        keys: KeyCombo,
+    },
+    Text {
+        text: String,
+    },
+    Wait {
+        ms: u32,
+    },
+    Click {
+        button: MouseButton,
+    },
+    /// Press a key and keep it down until a `key_up` step or the end of the
+    /// macro, which always lets go of it.
+    KeyDown {
+        key: KeyCombo,
+    },
+    KeyUp {
+        key: KeyCombo,
+    },
+    /// Move the pointer to a screen position, or by an amount with `relative`.
+    Move {
+        x: i32,
+        y: i32,
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        relative: bool,
+    },
+    /// Turn the mouse wheel: positive is up, or right with `horizontal`.
+    Scroll {
+        notches: i32,
+        #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+        horizontal: bool,
+    },
 }
 
 pub const MAX_REPEAT: u32 = 100;
 pub const MAX_WAIT_MS: u32 = 60_000;
 pub const MAX_STEPS: usize = 500;
+pub const MAX_MOVE: i32 = 100_000;
+pub const MAX_SCROLL: i32 = 100;
 
 /// Moving the pointer with the arrow keys.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -99,21 +133,33 @@ pub fn is_usable_hotkey(combo: &KeyCombo) -> bool {
 impl Config {
     pub(crate) fn check_extras(&self, errors: &mut Vec<String>) {
         let mut names = HashSet::new();
-        let mut hotkeys = HashSet::new();
-        let mut hotkey = |combo: &Option<KeyCombo>, ctx: &str, errors: &mut Vec<String>| {
-            let Some(combo) = combo else { return };
-            let text = combo.to_string();
-            if !is_usable_hotkey(combo) {
-                errors.push(format!(
-                    "{ctx}: the hotkey {text} needs Ctrl, Alt or Win, or a function key"
-                ));
-            } else if !hotkeys.insert(text.to_lowercase()) {
-                errors.push(format!("{ctx}: the hotkey {text} is already used"));
-            }
-        };
+        // Hotkeys in use, with the apps they are limited to (empty: every app).
+        // Two uses clash when both are for every app or they share an app; one
+        // limited to some apps may reuse a hotkey that works everywhere else.
+        let mut hotkeys: Vec<(String, Vec<String>)> = Vec::new();
+        let mut hotkey =
+            |combo: &Option<KeyCombo>, apps: &[String], ctx: &str, errors: &mut Vec<String>| {
+                let Some(combo) = combo else { return };
+                let text = combo.to_string();
+                let apps: Vec<String> = apps.iter().map(|a| a.trim().to_lowercase()).collect();
+                let clash = hotkeys.iter().any(|(used, used_apps)| {
+                    *used == text.to_lowercase()
+                        && ((used_apps.is_empty() && apps.is_empty())
+                            || used_apps.iter().any(|a| apps.contains(a)))
+                });
+                if !is_usable_hotkey(combo) {
+                    errors.push(format!(
+                        "{ctx}: the hotkey {text} needs Ctrl, Alt or Win, or a function key"
+                    ));
+                } else if clash {
+                    errors.push(format!("{ctx}: the hotkey {text} is already used"));
+                } else {
+                    hotkeys.push((text.to_lowercase(), apps));
+                }
+            };
 
         if self.mouse.enabled {
-            hotkey(&self.mouse.toggle, "mouse mode", errors);
+            hotkey(&self.mouse.toggle, &[], "mouse mode", errors);
         }
         if !MOUSE_SPEED_RANGE.contains(&self.mouse.speed) {
             errors.push(format!(
@@ -123,7 +169,7 @@ impl Config {
             ));
         }
         if self.hints.enabled {
-            hotkey(&self.hints.hotkey, "click hints", errors);
+            hotkey(&self.hints.hotkey, &[], "click hints", errors);
         }
 
         self.hints.style.check(errors);
@@ -135,7 +181,10 @@ impl Config {
             } else if !names.insert(item.name.as_str()) {
                 errors.push(format!("{ctx}: the name is used twice"));
             }
-            hotkey(&item.hotkey, &ctx, errors);
+            hotkey(&item.hotkey, &item.apps, &ctx, errors);
+            if item.apps.iter().any(|a| a.trim().is_empty()) {
+                errors.push(format!("{ctx}: an app name is empty"));
+            }
             if !(1..=MAX_REPEAT).contains(&item.repeat) {
                 errors.push(format!("{ctx}: repeat must be 1 to {MAX_REPEAT}"));
             }
@@ -151,6 +200,23 @@ impl Config {
                     }
                     MacroStep::Text { text } if text.is_empty() => {
                         errors.push(format!("{ctx}: a text step is empty"));
+                    }
+                    MacroStep::KeyDown { key } | MacroStep::KeyUp { key }
+                        if !key.mods.is_empty() =>
+                    {
+                        errors.push(format!(
+                            "{ctx}: holding or releasing works with one key, without Ctrl, Shift, Alt or Win"
+                        ));
+                    }
+                    MacroStep::Move { x, y, .. } if x.abs() > MAX_MOVE || y.abs() > MAX_MOVE => {
+                        errors.push(format!("{ctx}: a pointer move is too far"));
+                    }
+                    MacroStep::Scroll { notches, .. }
+                        if *notches == 0 || notches.abs() > MAX_SCROLL =>
+                    {
+                        errors.push(format!(
+                            "{ctx}: scrolling must be 1 to {MAX_SCROLL} steps, up or down"
+                        ));
                     }
                     _ => {}
                 }
@@ -192,12 +258,28 @@ mod tests {
             hotkey: Some(combo("Ctrl+Alt+1")),
             repeat: 1,
             until_stopped: false,
+            apps: Vec::new(),
             steps: vec![
                 MacroStep::Keys { keys: combo("Tab") },
                 MacroStep::Wait { ms: 50 },
                 MacroStep::Text { text: "hi".into() },
                 MacroStep::Click {
                     button: MouseButton::Left,
+                },
+                MacroStep::KeyDown {
+                    key: combo("LeftShift"),
+                },
+                MacroStep::Move {
+                    x: 40,
+                    y: -10,
+                    relative: true,
+                },
+                MacroStep::Scroll {
+                    notches: -3,
+                    horizontal: false,
+                },
+                MacroStep::KeyUp {
+                    key: combo("LeftShift"),
                 },
             ],
         }
@@ -265,7 +347,7 @@ mod tests {
 
     #[test]
     fn bad_macros_are_reported() {
-        let cases: [fn(&mut MacroDef); 5] = [
+        let cases: [fn(&mut MacroDef); 9] = [
             |m| m.name = " ".into(),
             |m| m.repeat = 0,
             |m| m.steps.clear(),
@@ -275,6 +357,25 @@ mod tests {
                 }]
             },
             |m| m.steps = vec![MacroStep::Text { text: "".into() }],
+            |m| {
+                m.steps = vec![MacroStep::KeyDown {
+                    key: combo("Ctrl+A"),
+                }]
+            },
+            |m| {
+                m.steps = vec![MacroStep::Move {
+                    x: MAX_MOVE + 1,
+                    y: 0,
+                    relative: false,
+                }]
+            },
+            |m| {
+                m.steps = vec![MacroStep::Scroll {
+                    notches: 0,
+                    horizontal: false,
+                }]
+            },
+            |m| m.apps = vec![" ".into()],
         ];
         for change in cases {
             let mut config = config();
@@ -283,6 +384,26 @@ mod tests {
             config.macros.push(item);
             assert_eq!(errors(&config).len(), 1, "{:?}", config.macros);
         }
+    }
+
+    #[test]
+    fn a_hotkey_can_be_reused_in_other_apps() {
+        let mut config = config();
+        let mut code = sample();
+        code.apps = vec!["Code.exe".into()];
+        let mut notepad = sample();
+        notepad.name = "Notepad".into();
+        notepad.apps = vec!["notepad.exe".into()];
+        let mut everywhere = sample();
+        everywhere.name = "Everywhere".into();
+        config.macros = vec![code, notepad, everywhere];
+        assert!(errors(&config).is_empty(), "{:?}", errors(&config));
+
+        let mut clash = sample();
+        clash.name = "Clash".into();
+        clash.apps = vec!["CODE.EXE".into()];
+        config.macros.push(clash);
+        assert_eq!(errors(&config).len(), 1);
     }
 
     #[test]
