@@ -6,8 +6,11 @@
 # Gestures:   rotate, click, double_click, long_press
 # Layers:     ctrl, shift, alt, win  (used while that modifier is held;
 #             a gesture missing from a layer falls back to the mode itself)
-# Actions:    volume, app_volume, mute, scroll, zoom, keys, mouse_click,
-#             cycle_mode, passthrough (stock knob behaviour), none
+# Actions:    volume, app_volume, mute, mic_volume, mic_mute, audio_output,
+#             open (target = "app.exe", a file, a folder or a web address;
+#             optional args = "..."), scroll, zoom, keys, mouse_click,
+#             run_macro, toggle_mouse_mode, click_hints, cycle_mode,
+#             passthrough (stock knob behaviour), none
 #
 # Double-click makes every single click wait ~250 ms to see whether a second
 # one follows, but only in modes that bind double_click.

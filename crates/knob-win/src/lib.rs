@@ -3,7 +3,8 @@
 //! * [`input`]: keyboard hook, Raw Input and foreground-app tracking, on a
 //!   dedicated thread with its own message loop.
 //! * [`output`]: injects keys, wheel and clicks with `SendInput`.
-//! * [`audio`]: per-app volume through Windows audio sessions.
+//! * [`audio`]: per-app volume, the microphone and the default sound output.
+//! * [`launch`]: opens apps, files and web addresses.
 //! * [`lighting`]: applies lighting layouts to the keyboard.
 //! * [`process`]: exe names for windows and process ids.
 //! * [`autostart`]: the "Start with Windows" registry entry.
@@ -13,6 +14,7 @@ pub mod autostart;
 pub mod clock;
 pub mod hints;
 pub mod input;
+pub mod launch;
 pub mod lighting;
 pub mod output;
 pub mod paths;

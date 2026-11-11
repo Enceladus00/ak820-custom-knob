@@ -27,7 +27,7 @@ not made by AJAZZ. It's free and all of the code is here.
 <td width="33%"><b>Modifier layers</b><br>New jobs while holding Ctrl, Shift, Alt or Win</td>
 </tr>
 <tr>
-<td><b>Volume</b><br>System-wide or one app at a time</td>
+<td><b>Volume and mic</b><br>System, one app, or the microphone</td>
 <td><b>Scroll and zoom</b><br>Up, down or sideways</td>
 <td><b>Media controls</b><br>Play, pause, next and previous</td>
 </tr>
@@ -78,8 +78,10 @@ modes come ready to use, and you can edit them or add more:
 | Scroll | Scroll | Middle click | Zoom | Scroll sideways |
 | Media | Right / left arrow key | Play / pause | Next / previous track | System volume |
 
-You can bind system volume or the volume of a single app, mute, scrolling in
-either direction, zoom, mouse clicks, switching modes, or any key combination.
+You can bind system volume or the volume of a single app, mute, the
+microphone's volume and mute, switching between speakers and headphones,
+opening an app, file or website, scrolling in either direction, zoom, mouse
+clicks, switching modes, or any key combination.
 Each direction can have its own: `.` and `,` step through a paused YouTube
 video one frame at a time. Holding Ctrl, Shift, Alt or Win gives the knob a
 separate set of jobs in every mode.
@@ -196,6 +198,11 @@ If the program fails, the knob falls back to volume instead of going dead.
 **How do I remap the knob on the AJAZZ AK820 MAX Ultra?**
 Install this, open Settings, and on the Modes page pick what turn, press and
 long press should do. It applies as soon as you save.
+
+**Can the knob mute my microphone or switch to my headphones?**
+Yes. *Mute / unmute the microphone* works for calls in Teams, Discord and the
+like too. *Next sound output* moves between speakers and headphones, and on a
+turn the knob goes back and forth through them.
 
 **Can I remap keys on the AK820 MAX Ultra?**
 Yes. On the Remap keys page, click a key field, press the key to change, then

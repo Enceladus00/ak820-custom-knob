@@ -52,6 +52,17 @@ pub enum Text {
     OsdMouseOn,
     OsdMouseOff,
     OsdNoHints,
+    /// `{percent}`
+    OsdMicVolume,
+    OsdMicMuted,
+    OsdMicOn,
+    OsdNoMic,
+    /// `{device}`
+    OsdOutput,
+    OsdOneOutput,
+    OsdSoundFailed,
+    /// `{target}`
+    OsdOpenFailed,
 }
 
 type Language = fn(Text) -> Option<&'static str>;
@@ -79,6 +90,14 @@ fn en(text: Text) -> Option<&'static str> {
         OsdMouseOn => "Mouse mode on",
         OsdMouseOff => "Mouse mode off",
         OsdNoHints => "Nothing clickable found here",
+        OsdMicVolume => "Microphone  {percent}%",
+        OsdMicMuted => "Microphone muted",
+        OsdMicOn => "Microphone on",
+        OsdNoMic => "No microphone found",
+        OsdOutput => "Sound: {device}",
+        OsdOneOutput => "Only one sound output is connected",
+        OsdSoundFailed => "Couldn’t change the sound settings",
+        OsdOpenFailed => "Couldn’t open {target}",
         OsdPaused => "Knob: paused",
         OsdResumed => "Knob: custom functions on",
         OsdReloaded => "Settings reloaded",

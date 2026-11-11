@@ -70,6 +70,8 @@ registerLocale('en', 'English', {
     rotate: {
       volume: 'System volume',
       app_volume: 'Volume of the app in front',
+      mic_volume: 'Microphone volume',
+      audio_output: 'Switch sound output',
       scroll: 'Scroll',
       zoom: 'Zoom (Ctrl + mouse wheel)',
       keys: 'Press keys',
@@ -78,6 +80,9 @@ registerLocale('en', 'English', {
     },
     press: {
       mute: 'Mute / unmute',
+      mic_mute: 'Mute / unmute the microphone',
+      audio_output: 'Next sound output',
+      open: 'Open an app, file or website',
       cycle_mode: 'Switch to the next mode',
       keys: 'Press keys',
       mouse_click: 'Mouse click',
@@ -97,6 +102,9 @@ registerLocale('en', 'English', {
     clockwise: 'Clockwise',
     counterClockwise: 'Counter-clockwise',
     keys: 'Keys',
+    target: 'App, file, folder or web address',
+    targetExample: 'spotify.exe, C:\Notes\todo.txt or https://…',
+    args: 'Arguments (optional)',
     keycapTitle: 'Click here, then press any key or key combination',
     specialKey: 'Special key…',
     mouse: { left: 'Left button', middle: 'Middle button', right: 'Right button' },

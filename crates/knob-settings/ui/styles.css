@@ -465,6 +465,10 @@ select.special { min-height: 34px; min-width: 0; font-size: 13px; color: var(--m
 
 .banner-action { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
 
+/* "Open" action fields */
+.open-target { flex: 1 1 280px; min-width: 0; }
+.open-args { flex: 0 1 200px; min-width: 0; }
+
 /* Remap page */
 .remap-row {
   display: grid;

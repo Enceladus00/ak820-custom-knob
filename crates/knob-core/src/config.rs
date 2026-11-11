@@ -177,6 +177,23 @@ pub enum Action {
     },
     /// Toggle system mute.
     Mute,
+    /// Volume of the microphone (the default recording device).
+    MicVolume {
+        #[serde(default = "default_mic_step")]
+        step: u32,
+        #[serde(default = "yes")]
+        accelerate: bool,
+    },
+    /// Mute or unmute the microphone.
+    MicMute,
+    /// Make the next sound output the default; turning goes back and forth.
+    AudioOutput,
+    /// Open an app, a file, a folder or a web address.
+    Open {
+        target: String,
+        #[serde(default, skip_serializing_if = "String::is_empty")]
+        args: String,
+    },
     Scroll {
         #[serde(default = "one")]
         lines: u32,
@@ -226,6 +243,9 @@ pub enum MouseButton {
 fn default_volume_step() -> u32 {
     2
 }
+fn default_mic_step() -> u32 {
+    5
+}
 fn one() -> u32 {
     1
 }
@@ -239,12 +259,16 @@ impl Action {
         match self {
             Action::Volume { .. }
             | Action::AppVolume { .. }
+            | Action::MicVolume { .. }
+            | Action::AudioOutput
             | Action::Scroll { .. }
             | Action::Zoom
             | Action::Passthrough
             | Action::Nothing => true,
             Action::Keys { keys, cw, ccw } => keys.is_none() && cw.is_some() && ccw.is_some(),
             Action::Mute
+            | Action::MicMute
+            | Action::Open { .. }
             | Action::MouseClick { .. }
             | Action::CycleMode
             | Action::ToggleMouseMode
@@ -257,6 +281,9 @@ impl Action {
     pub fn fits_press(&self) -> bool {
         match self {
             Action::Mute
+            | Action::MicMute
+            | Action::AudioOutput
+            | Action::Open { .. }
             | Action::MouseClick { .. }
             | Action::CycleMode
             | Action::ToggleMouseMode
@@ -267,6 +294,7 @@ impl Action {
             Action::Keys { keys, cw, ccw } => keys.is_some() && cw.is_none() && ccw.is_none(),
             Action::Volume { .. }
             | Action::AppVolume { .. }
+            | Action::MicVolume { .. }
             | Action::Scroll { .. }
             | Action::Zoom => false,
         }
@@ -298,6 +326,26 @@ impl Bindings {
     }
 
     fn validate(&self, context: &str, errors: &mut Vec<String>) {
+        for action in [
+            &self.rotate,
+            &self.click,
+            &self.double_click,
+            &self.long_press,
+        ]
+        .into_iter()
+        .flatten()
+        {
+            if let Action::Open { target, .. } = action
+                && target.trim().is_empty()
+            {
+                errors.push(format!("{context}: choose what to open"));
+            }
+            if let Action::MicVolume { step, .. } = action
+                && !(1..=25).contains(step)
+            {
+                errors.push(format!("{context}: microphone step must be 1 to 25"));
+            }
+        }
         if let Some(a) = &self.rotate
             && !a.fits_rotate()
         {
@@ -553,6 +601,42 @@ impl Config {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn sound_and_open_actions_load_and_check() {
+        let text = DEFAULT_CONFIG.replacen(
+            "[[mode]]",
+            r#"[[mode]]
+id = "sound"
+name = "Sound"
+rotate = { action = "mic_volume" }
+click = { action = "mic_mute" }
+double_click = { action = "audio_output" }
+long_press = { action = "open", target = "https://example.com" }
+
+[[mode]]"#,
+            1,
+        );
+        let config = Config::from_toml(&text).unwrap();
+        let mode = config.mode("sound").unwrap();
+        assert_eq!(
+            mode.rotate,
+            Some(Action::MicVolume {
+                step: 5,
+                accelerate: true
+            })
+        );
+        assert_eq!(mode.click, Some(Action::MicMute));
+        assert!(Action::AudioOutput.fits_rotate() && Action::AudioOutput.fits_press());
+
+        let empty = text.replace(r#"target = "https://example.com""#, r#"target = " ""#);
+        assert!(Config::from_toml(&empty).is_err());
+        let rotate_open = text.replace(
+            r#"rotate = { action = "mic_volume" }"#,
+            r#"rotate = { action = "open", target = "x" }"#,
+        );
+        assert!(Config::from_toml(&rotate_open).is_err());
+    }
 
     #[test]
     fn default_config_is_valid() {

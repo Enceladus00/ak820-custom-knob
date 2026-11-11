@@ -73,6 +73,8 @@ const ACTIONS = {
   rotate: [
     ['volume', { step: 2, accelerate: true }],
     ['app_volume', { step: 5, accelerate: true }],
+    ['mic_volume', { step: 5, accelerate: true }],
+    ['audio_output', {}],
     ['scroll', { lines: 1, horizontal: false, accelerate: true }],
     ['zoom', {}],
     ['keys', { cw: 'Right', ccw: 'Left' }],
@@ -81,6 +83,9 @@ const ACTIONS = {
   ],
   press: [
     ['mute', {}],
+    ['mic_mute', {}],
+    ['audio_output', {}],
+    ['open', { target: '', args: '' }],
     ['cycle_mode', {}],
     ['keys', { keys: 'Space' }],
     ['mouse_click', { button: 'middle' }],
@@ -342,6 +347,12 @@ function paramsHtml(action, path, kind) {
         ${macros.map((m) => `<option value="${esc(m.name)}" ${m.name === action.name ? 'selected' : ''}>${esc(m.name)}</option>`).join('')}
       </select></label>`
       : `<span class="muted">${t('macros.noneYet')}</span>`);
+  }
+  if (action.action === 'open') {
+    parts.push(`<label class="field grow open-target"><span>${t('params.target')}</span>
+      <input type="text" data-bind="${path}.target" value="${esc(action.target)}" placeholder="${esc(tPlain('params.targetExample'))}" spellcheck="false"></label>`);
+    parts.push(`<label class="field open-args"><span>${t('params.args')}</span>
+      <input type="text" data-bind="${path}.args" value="${esc(action.args ?? '')}" spellcheck="false"></label>`);
   }
   if (action.action === 'mouse_click') {
     parts.push(`<label class="param"><select data-bind="${path}.button">
