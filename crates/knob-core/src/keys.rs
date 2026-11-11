@@ -69,6 +69,14 @@ const NAMED_KEYS: &[(&str, u16)] = &[
     ("NumLock", 0x90),
     ("ScrollLock", 0x91),
     ("Menu", 0x5D),
+    ("LeftShift", 0xA0),
+    ("RightShift", 0xA1),
+    ("LeftCtrl", 0xA2),
+    ("RightCtrl", 0xA3),
+    ("LeftAlt", 0xA4),
+    ("RightAlt", 0xA5),
+    ("LeftWin", 0x5B),
+    ("RightWin", 0x5C),
     ("NumMultiply", 0x6A),
     ("NumAdd", 0x6B),
     ("NumSubtract", 0x6D),
@@ -328,6 +336,8 @@ mod tests {
             "Pause",
             "NumDecimal",
             "Shift+Win+S",
+            "LeftCtrl",
+            "RightAlt",
         ] {
             assert_eq!(parse(text).to_string(), text);
         }

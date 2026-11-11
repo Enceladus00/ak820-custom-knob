@@ -6,8 +6,9 @@ or any shortcut, and give it a different job in each app.
 
 It also does a few other things I wanted from my keyboard. I often use my PC
 from across the room, so the arrow keys can drive the mouse, and letter hints
-let me click a link without pressing Tab thirty times to reach it. There are
-macros and lighting layouts too.
+let me click a link without pressing Tab thirty times to reach it. You can
+also turn any key into another key or a shortcut, and there are macros and
+lighting layouts too.
 
 Only the knob changes by default. Every other key behaves as before, including
 Fn+F2 and Fn+F3 for volume, and the extras stay off until you turn them on.
@@ -31,7 +32,7 @@ not made by AJAZZ. It's free and all of the code is here.
 <td><b>Media controls</b><br>Play, pause, next and previous</td>
 </tr>
 <tr>
-<td><b>Mouse clicks</b><br>Left, middle or right on the knob</td>
+<td><b>Key remapping</b><br>Any key becomes another key or a shortcut</td>
 <td><b>Long and double press</b><br>More actions on one knob</td>
 <td><b>Macros</b><br>Record keys, text, waits and clicks</td>
 </tr>
@@ -92,6 +93,17 @@ itself when another app comes to the front.
 One quirk: Fn+F4 counts as a knob press, because the keyboard sends the same
 signal for both and they can't be told apart. In Scroll mode, Fn+F4 is a middle
 click.
+
+## Key remapping
+
+Turn any key into another key or a shortcut, in every app or only in the ones
+you pick. Caps Lock can become Esc or Ctrl, a key you never use can become
+Play / Pause, and F13 can mute your mic in Teams.
+
+A key that becomes another single key works exactly like it, held for as long
+as you hold it. A key that becomes a shortcut sends it once per press. Remaps
+never apply while Settings is in front, so you can always undo one there, and
+*Paused* in the tray menu turns them all off.
 
 ## Macros
 
@@ -160,8 +172,8 @@ then does nothing and the knob goes on controlling volume.
 
 To see the knob, the program installs a Windows keyboard hook, which means it
 sees every key press. By default it only acts on the volume and mute keys and
-passes everything else through. If you turn on macros, mouse mode or click
-hints, it also acts on the keys those use.
+passes everything else through. If you remap keys or turn on macros, mouse
+mode or click hints, it also acts on the keys those use.
 
 It doesn't record what you type, its logs contain no key presses, and it never
 connects to the internet. Macro recording only captures keys pressed inside the
@@ -185,6 +197,10 @@ If the program fails, the knob falls back to volume instead of going dead.
 Install this, open Settings, and on the Modes page pick what turn, press and
 long press should do. It applies as soon as you save.
 
+**Can I remap keys on the AK820 MAX Ultra?**
+Yes. On the Remap keys page, click a key field, press the key to change, then
+press what it should become: another key or a shortcut.
+
 **Do I need the official AJAZZ software or driver?**
 No.
 
@@ -199,7 +215,7 @@ It's only been tested on the MAX Ultra. See
 
 **Why doesn't it work in an app I run as administrator?**
 Windows doesn't let normal programs control apps running as administrator.
-Hotkeys, mouse mode and click hints work everywhere else.
+Hotkeys, remaps, mouse mode and click hints work everywhere else.
 
 ## Config file
 

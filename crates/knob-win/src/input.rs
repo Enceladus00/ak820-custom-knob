@@ -12,6 +12,7 @@ use std::ffi::c_void;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 use std::sync::{LazyLock, Mutex, OnceLock};
 
+use knob_core::remap::Remap;
 use knob_core::router::{Decision, Hotkey, KeyInfo, Router, RouterEvent};
 use knob_core::{HookKey, Input, Modifiers};
 use windows::Win32::Foundation::{HANDLE, HWND, LPARAM, LRESULT, WPARAM};
@@ -29,15 +30,15 @@ use windows::Win32::UI::Input::{
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     CallNextHookEx, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW,
-    EVENT_SYSTEM_FOREGROUND, GIDC_REMOVAL, GetForegroundWindow, GetMessageW, HC_ACTION,
-    HWND_MESSAGE, KBDLLHOOKSTRUCT, KillTimer, MSG, PostThreadMessageW, RegisterClassW, SetTimer,
-    SetWindowsHookExW, TranslateMessage, UnhookWindowsHookEx, WH_KEYBOARD_LL, WINDOW_EX_STYLE,
-    WINDOW_STYLE, WINEVENT_OUTOFCONTEXT, WINEVENT_SKIPOWNPROCESS, WM_INPUT, WM_INPUT_DEVICE_CHANGE,
-    WM_KEYDOWN, WM_QUIT, WM_SYSKEYDOWN, WM_TIMER, WNDCLASSW,
+    EVENT_SYSTEM_DESKTOPSWITCH, EVENT_SYSTEM_FOREGROUND, GIDC_REMOVAL, GetForegroundWindow,
+    GetMessageW, HC_ACTION, HWND_MESSAGE, KBDLLHOOKSTRUCT, KillTimer, MSG, PostThreadMessageW,
+    RegisterClassW, SetTimer, SetWindowsHookExW, TranslateMessage, UnhookWindowsHookEx,
+    WH_KEYBOARD_LL, WINDOW_EX_STYLE, WINDOW_STYLE, WINEVENT_OUTOFCONTEXT, WINEVENT_SKIPOWNPROCESS,
+    WM_INPUT, WM_INPUT_DEVICE_CHANGE, WM_KEYDOWN, WM_QUIT, WM_SYSKEYDOWN, WM_TIMER, WNDCLASSW,
 };
 use windows::core::{Result, w};
 
-use crate::{KNOWN_DEVICES, MARKER, clock, process};
+use crate::{KNOWN_DEVICES, MARKER, clock, output, process};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InputEvent {
@@ -72,6 +73,9 @@ pub fn keyboard_present() -> bool {
 /// While paused, the knob behaves exactly as without this program.
 pub fn set_paused(paused: bool) {
     PAUSED.store(paused, Ordering::SeqCst);
+    if paused {
+        release_remaps();
+    }
 }
 
 pub fn is_paused() -> bool {
@@ -103,9 +107,32 @@ pub fn set_hints_active(active: bool) {
     }
 }
 
+/// Replaces the key remapping rules.
+pub fn set_remaps(remaps: Vec<Remap>) {
+    if let Ok(mut router) = ROUTER.lock() {
+        router.set_remaps(remaps);
+    }
+}
+
+/// Releases every key a remap is holding down, so none stays stuck when
+/// remapping stops or a key's release can't be seen. Safe from any thread.
+pub fn release_remaps() {
+    let keys = match ROUTER.lock() {
+        Ok(mut router) => router.take_held(),
+        Err(_) => return,
+    };
+    for vk in keys {
+        log::debug!("remap: released 0x{vk:02X}");
+        output::remap_key(vk, false);
+    }
+}
+
 /// Fail-safe: once the engine is gone, the hook stops swallowing keys.
 pub fn set_engine_alive(alive: bool) {
     ENGINE_ALIVE.store(alive, Ordering::SeqCst);
+    if !alive {
+        release_remaps();
+    }
 }
 
 /// Ends `run`'s message loop. Safe to call from any thread.
@@ -182,6 +209,17 @@ pub fn run(sink: fn(InputEvent)) -> Result<()> {
             WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS,
         );
         log::debug!("input: foreground hook installed");
+        // The lock screen and UAC prompts run on another desktop, where key
+        // releases never reach the hook: let go of remapped keys first.
+        let desktop_event = SetWinEventHook(
+            EVENT_SYSTEM_DESKTOPSWITCH,
+            EVENT_SYSTEM_DESKTOPSWITCH,
+            None,
+            Some(desktop_proc),
+            0,
+            0,
+            WINEVENT_OUTOFCONTEXT,
+        );
         report_foreground(GetForegroundWindow());
 
         let mut msg = MSG::default();
@@ -192,18 +230,34 @@ pub fn run(sink: fn(InputEvent)) -> Result<()> {
         }
 
         let _ = UnhookWinEvent(win_event);
+        let _ = UnhookWinEvent(desktop_event);
         let _ = UnhookWindowsHookEx(hook);
+        release_remaps();
         let _ = DestroyWindow(hwnd);
     }
     Ok(())
 }
 
+const VK_LCONTROL_CODE: u16 = 0xA2;
+const VK_RMENU_CODE: u16 = 0xA5;
+/// Scan-code bit Windows sets on the Left Ctrl it adds to every AltGr press.
+const ALTGR_CTRL_SCAN: u32 = 0x200;
+
 /// What the optional features want done with this key. Does nothing at all
 /// while none of them is in use.
-fn route(vk: u16, down: bool) -> Decision {
+fn route(vk: u16, scan: u32, down: bool) -> Decision {
     let Ok(mut router) = ROUTER.lock() else {
         return Decision::default();
     };
+    // AltGr arrives as a made-up Left Ctrl plus Right Alt. When Right Alt is
+    // remapped, the made-up Ctrl has to go too, or it would combine with
+    // whatever Right Alt now sends.
+    if vk == VK_LCONTROL_CODE && scan & ALTGR_CTRL_SCAN != 0 && router.is_remapped(VK_RMENU_CODE) {
+        return Decision {
+            swallow: true,
+            ..Decision::default()
+        };
+    }
     if router.is_idle() {
         return Decision::default();
     }
@@ -250,9 +304,12 @@ extern "system" fn hook_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESU
             {
                 let msg = wparam.0 as u32;
                 let down = msg == WM_KEYDOWN || msg == WM_SYSKEYDOWN;
-                let decision = route(k.vkCode as u16, down);
+                let decision = route(k.vkCode as u16, k.scanCode, down);
                 if let Some(event) = decision.event {
                     emit(InputEvent::Extra(event));
+                }
+                if let Some(send) = decision.send {
+                    output::remap(send);
                 }
                 if decision.swallow {
                     return LRESULT(1);
@@ -295,9 +352,23 @@ fn report_foreground(hwnd: HWND) {
         // A hotkey is being set up: pressing it must not also run it.
         if let Ok(mut router) = ROUTER.lock() {
             router.set_hotkeys_suspended(exe.eq_ignore_ascii_case(SETTINGS_EXE));
+            router.set_foreground(&exe);
         }
         emit(InputEvent::Foreground { pid, exe });
     }
+}
+
+extern "system" fn desktop_proc(
+    _hook: HWINEVENTHOOK,
+    _event: u32,
+    _hwnd: HWND,
+    _id_object: i32,
+    _id_child: i32,
+    _thread: u32,
+    _time: u32,
+) {
+    log::debug!("input: desktop switch");
+    release_remaps();
 }
 
 extern "system" fn wndproc(hwnd: HWND, msg: u32, wparam: WPARAM, lparam: LPARAM) -> LRESULT {

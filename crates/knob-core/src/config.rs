@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::extras::{HintSettings, MacroDef, MouseSettings};
 use crate::gesture::{GestureKind, GestureTiming};
 use crate::keys::KeyCombo;
+use crate::remap::RemapDef;
 use crate::signal::{MS, Modifiers};
 
 pub const CONFIG_VERSION: u32 = 1;
@@ -43,6 +44,8 @@ pub struct Config {
     pub mouse: MouseSettings,
     #[serde(default)]
     pub hints: HintSettings,
+    #[serde(rename = "remap", default, skip_serializing_if = "Vec::is_empty")]
+    pub remaps: Vec<RemapDef>,
 }
 
 fn default_layouts() -> Vec<LightingLayout> {
@@ -538,6 +541,7 @@ impl Config {
             layout.check(&mut errors);
         }
         self.check_extras(&mut errors);
+        self.check_remaps(&mut errors);
         if errors.is_empty() {
             Ok(())
         } else {

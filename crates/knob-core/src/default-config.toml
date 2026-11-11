@@ -129,3 +129,18 @@ color = "#FFFFFF"
 colorful = true
 brightness = 4
 speed = 3
+
+# ---------------------------------------------------------------- key remapping
+# Off until you add a rule. Each [[remap]] turns one key into another key or a
+# shortcut, in every app or only in the apps listed. A key turned into another
+# single key is held for as long as you hold it; a shortcut is sent once per
+# press. Remaps never apply while the Settings window is in front.
+#
+# [[remap]]
+# from = "CapsLock"
+# to = "Esc"
+#
+# [[remap]]
+# from = "F13"
+# to = "Ctrl+Shift+M"
+# apps = ["Teams.exe"]

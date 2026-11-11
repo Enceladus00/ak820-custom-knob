@@ -17,6 +17,7 @@ window.startPreview = (mock) => { invoke = mock; init(); };
 const PAGES = [
   { id: 'modes', icon: 'dial' },
   { id: 'apps', icon: 'apps' },
+  { id: 'remap', icon: 'remap' },
   { id: 'macros', icon: 'macro' },
   { id: 'controls', icon: 'pointer' },
   { id: 'lighting', icon: 'light' },
@@ -103,6 +104,7 @@ const ICONS = {
   light: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.8 10.6c.7.6 1.1 1.3 1.2 2.4h5.2c.1-1.1.5-1.8 1.2-2.4A6 6 0 0 0 12 3Z"/></svg>',
   macro: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M8 14h8"/></svg>',
   pointer: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l6.5 17 2.4-6.9L21 10.7 5 3Z"/></svg>',
+  remap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="7" height="8" rx="1.5"/><rect x="15" y="8" width="7" height="8" rx="1.5"/><path d="M10.5 12h3.5M12.5 10l2 2-2 2"/></svg>',
   plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
 };
 
@@ -124,7 +126,8 @@ const state = {
   autostart: null, // { available, enabled }; null until known
   daemon: null, // { running, available }; null until known
   version: '',
-  picker: null, // index of the profile the app picker adds to
+  picker: null, // index of the profile or remap the app picker adds to
+  pickerFor: 'profiles', // 'profiles' or 'remaps'
   apps: null,
   appFilter: '',
   saving: false,
@@ -156,17 +159,18 @@ function setPath(obj, path, value) {
 // The Rust side names the lists after the TOML tables ([[mode]], [[profile]]);
 // the UI uses plural names. Convert at the boundary.
 function fromRust(raw) {
-  const { mode, profile, macro, ...rest } = raw;
-  const config = { ...rest, modes: mode, profiles: profile, macros: macro ?? [] };
+  const { mode, profile, macro, remap, ...rest } = raw;
+  const config = { ...rest, modes: mode, profiles: profile, macros: macro ?? [], remaps: remap ?? [] };
   for (const p of config.profiles) {
     if (typeof p.match.exe === 'string') p.match.exe = [p.match.exe];
   }
+  for (const r of config.remaps) r.apps ??= [];
   return config;
 }
 
 function toRust(config) {
-  const { modes, profiles, macros, ...rest } = config;
-  return { ...rest, mode: modes, profile: profiles, macro: macros };
+  const { modes, profiles, macros, remaps, ...rest } = config;
+  return { ...rest, mode: modes, profile: profiles, macro: macros, remap: remaps };
 }
 
 const isDirty = () => JSON.stringify(state.config) !== state.savedJson;
@@ -223,7 +227,7 @@ function render() {
 
   const main = $('#main');
   const scroll = main.scrollTop;
-  const pages = { modes: modesPage, apps: appsPage, macros: macrosPage, controls: controlsPage, lighting: lightingPage, general: generalPage };
+  const pages = { modes: modesPage, apps: appsPage, remap: remapPage, macros: macrosPage, controls: controlsPage, lighting: lightingPage, general: generalPage };
   main.innerHTML = pages[state.page]();
   main.scrollTop = scroll;
   renderPicker();
@@ -425,6 +429,58 @@ function profileCard(profile, i, count) {
   </section>`;
 }
 
+// ---------- remap page
+
+// Free keys offered first for a new remap.
+const REMAP_CANDIDATES = ['CapsLock', 'F13', 'F14', 'F15', 'F16', 'F17', 'F18', 'F19', 'F20', 'ScrollLock', 'Pause', 'Insert'];
+
+function remapPage() {
+  const remaps = state.config.remaps;
+  return `<p class="lead">${t('remap.lead')}</p>
+    ${remaps.length
+      ? `<section class="card remap-list">${remaps.map(remapRow).join('')}</section>`
+      : `<div class="card muted">${t('remap.empty')}</div>`}
+    <button class="btn ghost" data-cmd="add-remap">${icon('plus')} ${t('remap.add')}</button>
+    <p class="hint">${t('remap.note')}</p>`;
+}
+
+function remapRow(rule, i) {
+  const remove = esc(tPlain('apps.remove'));
+  const apps = rule.apps.length
+    ? rule.apps.map((exe, k) => `<span class="chip">${esc(exe)}<button data-cmd="remap-remove-app" data-index="${i}" data-app="${k}" title="${remove}">×</button></span>`).join('')
+    : `<span class="chip all">${t('apps.everyApp')}</span>`;
+  const special = SPECIAL_KEYS.map((k) => `<option value="${k}">${t(`specialKeys.${k}`)}</option>`).join('');
+  return `<div class="remap-row">
+    <div class="remap-key">
+      <span class="param-label">${t('remap.from')}</span>
+      <input class="keycap" readonly data-keycap="remaps.${i}.from" data-keymode="single" value="${esc(rule.from)}" title="${esc(tPlain('remap.fromTitle'))}" aria-label="${esc(tPlain('remap.from'))}">
+    </div>
+    <span class="remap-arrow" aria-hidden="true">→</span>
+    <div class="remap-key">
+      <span class="param-label">${t('remap.to')}</span>
+      <div class="remap-to">
+        <input class="keycap" readonly data-keycap="remaps.${i}.to" data-keymode="target" value="${esc(rule.to)}" title="${esc(tPlain('remap.toTitle'))}" aria-label="${esc(tPlain('remap.to'))}">
+        <select class="special" data-special="remaps.${i}.to" aria-label="${esc(tPlain('params.specialKey'))}">
+          <option value="">${t('params.specialKey')}</option>${special}
+        </select>
+      </div>
+    </div>
+    <div class="remap-apps">
+      <span class="param-label">${t('remap.where')}</span>
+      <div class="chips">${apps}<button class="btn small" data-cmd="open-remap-picker" data-index="${i}">${icon('plus')} ${rule.apps.length ? t('apps.addApp') : t('remap.onlyIn')}</button></div>
+    </div>
+    <button class="icon-btn danger" data-cmd="delete-remap" data-index="${i}" title="${esc(tPlain('remap.delete'))}">✕</button>
+  </div>`;
+}
+
+// The exe list the open app picker adds to.
+function pickerList() {
+  if (state.picker == null) return null;
+  return state.pickerFor === 'remaps'
+    ? state.config.remaps[state.picker]?.apps
+    : state.config.profiles[state.picker]?.match.exe;
+}
+
 function renderPicker() {
   const root = $('#modal-root');
   if (state.picker == null) {
@@ -459,7 +515,7 @@ function renderAppList() {
     return;
   }
   const filter = state.appFilter.toLowerCase();
-  const taken = new Set(state.config.profiles[state.picker]?.match.exe.map((e) => e.toLowerCase()) ?? []);
+  const taken = new Set(pickerList()?.map((e) => e.toLowerCase()) ?? []);
   const apps = state.apps.filter((a) => !taken.has(a.exe.toLowerCase())
     && (!filter || a.exe.toLowerCase().includes(filter) || a.title.toLowerCase().includes(filter)));
   list.innerHTML = apps.length
@@ -905,8 +961,9 @@ function pruneLayer(path) {
   if (layer && !Object.keys(layer).length) setPath(state.config, layerPath, undefined);
 }
 
-async function openPicker(profileIndex) {
-  state.picker = profileIndex;
+async function openPicker(index, list = 'profiles') {
+  state.picker = index;
+  state.pickerFor = list;
   state.appFilter = '';
   state.apps = null;
   renderPicker();
@@ -920,8 +977,8 @@ async function openPicker(profileIndex) {
 
 function addApp(exe) {
   const name = exe.trim();
-  if (!name || state.picker == null) return;
-  const list = state.config.profiles[state.picker].match.exe;
+  const list = pickerList();
+  if (!name || !list) return;
   if (!list.some((e) => e.toLowerCase() === name.toLowerCase())) list.push(name);
   state.picker = null;
   changed();
@@ -1002,6 +1059,22 @@ const commands = {
   },
   'open-picker': (el) => openPicker(Number(el.dataset.profile)),
   'close-picker': () => { state.picker = null; renderPicker(); },
+  'open-remap-picker': (el) => openPicker(Number(el.dataset.index), 'remaps'),
+  'remap-remove-app': (el) => {
+    state.config.remaps[Number(el.dataset.index)].apps.splice(Number(el.dataset.app), 1);
+    changed();
+  },
+  'add-remap': () => {
+    const used = new Set(state.config.remaps.filter((r) => !r.apps.length).map((r) => r.from.toLowerCase()));
+    const from = REMAP_CANDIDATES.find((k) => !used.has(k.toLowerCase())) ?? 'F24';
+    state.config.remaps.push({ from, to: from === 'CapsLock' ? 'Esc' : 'MediaPlayPause', apps: [] });
+    changed();
+    document.querySelector(`[data-keycap="remaps.${state.config.remaps.length - 1}.from"]`)?.focus();
+  },
+  'delete-remap': (el) => {
+    state.config.remaps.splice(Number(el.dataset.index), 1);
+    changed();
+  },
   'pick-app': (el) => addApp(el.dataset.exe),
   'add-manual-app': () => {
     let exe = $('#app-manual').value.trim();
@@ -1253,6 +1326,32 @@ const KEY_BY_KEY = {
   LaunchMail: 'LaunchMail', LaunchMediaPlayer: 'LaunchMedia', LaunchApplication1: 'LaunchApp1', LaunchApplication2: 'LaunchApp2',
 };
 const MODIFIER_KEYS = ['Control', 'Shift', 'Alt', 'AltGraph', 'Meta', 'OS'];
+// Modifier keys pressed on their own, by which side of the keyboard.
+const MODIFIER_BY_CODE = {
+  ControlLeft: 'LeftCtrl', ControlRight: 'RightCtrl', ShiftLeft: 'LeftShift', ShiftRight: 'RightShift',
+  AltLeft: 'LeftAlt', AltRight: 'RightAlt', MetaLeft: 'LeftWin', MetaRight: 'RightWin', OSLeft: 'LeftWin', OSRight: 'RightWin',
+};
+
+/** "LeftCtrl" and so on for a modifier key, else null. */
+function loneModifier(e) {
+  if (MODIFIER_BY_CODE[e.code]) return MODIFIER_BY_CODE[e.code];
+  // Some input (on-screen keyboards, remote desktop) has no key position.
+  const name = { Control: 'Ctrl', Shift: 'Shift', Alt: 'Alt', AltGraph: 'Alt', Meta: 'Win', OS: 'Win' }[e.key];
+  if (!name) return null;
+  return `${e.location === 2 || e.key === 'AltGraph' ? 'Right' : 'Left'}${name}`;
+}
+
+/**
+ * What a key field records. "single" (the key a remap changes): one key,
+ * modifiers included, with nothing held alongside. "target" (what it
+ * becomes): a lone modifier key or any combination. Otherwise: a combination.
+ */
+function keyForField(e, mode) {
+  const lone = loneModifier(e);
+  if (mode === 'single') return lone ?? keyFromEvent(e)?.key ?? null;
+  if (mode === 'target' && lone) return lone;
+  return comboFromEvent(e);
+}
 
 /** { key, isChar } for a keydown, or null for a bare modifier. */
 function keyFromEvent(e) {
@@ -1265,6 +1364,8 @@ function keyFromEvent(e) {
   // unless AltGr turns them into another character (Turkish AltGr+Q = @).
   if (letter && !altGr) return { key: letter[1], isChar: false };
   if (digit && !altGr) return { key: digit[1], isChar: false };
+  // Without a key position, an ASCII letter or digit is still that key.
+  if (!e.code && !altGr && /^[a-z0-9]$/i.test(e.key)) return { key: e.key.toUpperCase(), isChar: false };
   if (numpad) return { key: `Num${numpad[1]}`, isChar: false };
   if (/^F([1-9]|1\d|2[0-4])$/.test(e.key)) return { key: e.key, isChar: false };
   const named = KEY_BY_CODE[e.code] ?? KEY_BY_KEY[e.key];
@@ -1303,7 +1404,7 @@ document.addEventListener('keydown', (e) => {
     const plainTab = e.key === 'Tab' && !e.ctrlKey && !e.altKey && !e.metaKey;
     if (plainTab) return; // keep keyboard navigation working
     e.preventDefault();
-    const combo = comboFromEvent(e);
+    const combo = keyForField(e, el.dataset.keymode);
     if (!combo) return;
     setPath(state.config, el.dataset.keycap, combo);
     el.value = combo;

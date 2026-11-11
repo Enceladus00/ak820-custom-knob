@@ -11,8 +11,9 @@ use std::time::{Duration, Instant};
 
 use knob_core::extras::{MacroDef, MacroStep};
 use knob_core::pointer::{PointerMotion, hint_labels};
+use knob_core::remap::Remap;
 use knob_core::router::{Hotkey, HotkeyId, MouseControl, RouterEvent};
-use knob_core::{Config, KeyCombo, MouseButton};
+use knob_core::{Config, Key, KeyCombo, MouseButton};
 use knob_win::hints::{HintFinder, Target};
 use knob_win::{input, output};
 use windows::Win32::UI::WindowsAndMessaging::GetForegroundWindow;
@@ -61,6 +62,8 @@ fn release_keys() {
     input::set_hints_active(false);
     input::set_macro_running(false);
     input::set_hotkeys(Vec::new());
+    input::set_remaps(Vec::new());
+    input::release_remaps();
     MOUSE_ON.store(false, Ordering::SeqCst);
     ui::notify(UiEvent::HintsHide);
 }
@@ -258,8 +261,34 @@ impl Extras {
         }
     }
 
+    /// Hands the hotkeys and key remaps to the keyboard hook.
     fn install_hotkeys(&self) {
         let config = &self.config;
+        let remaps: Vec<Remap> = config
+            .remaps
+            .iter()
+            .filter_map(|def| {
+                let vk = match def.from.key {
+                    Key::Vk(vk) => vk,
+                    // Looked up once, on the layout in use now.
+                    Key::Char(c) => match output::plain_vk(c) {
+                        Some(vk) => vk,
+                        None => {
+                            log::warn!(
+                                "remap {}: no key types it without Shift or AltGr; skipped",
+                                def.from
+                            );
+                            return None;
+                        }
+                    },
+                };
+                Some(Remap::new(vk, def))
+            })
+            .collect();
+        if !remaps.is_empty() {
+            log::info!("remap: {} rule(s)", remaps.len());
+        }
+        input::set_remaps(remaps);
         let mut wanted: Vec<(KeyCombo, HotkeyId)> = config
             .macros
             .iter()

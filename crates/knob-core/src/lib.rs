@@ -16,6 +16,7 @@ pub mod gesture;
 pub mod hint_style;
 pub mod keys;
 pub mod pointer;
+pub mod remap;
 pub mod resolver;
 pub mod router;
 pub mod signal;

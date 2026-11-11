@@ -14,6 +14,7 @@ registerLocale('en', 'English', {
   pages: {
     modes: { label: 'Modes', title: 'Modes', sub: 'What the knob does. Each mode is one set of actions; a long press switches modes.' },
     apps: { label: 'Apps', title: 'Apps', sub: 'Which modes the knob has in which app.' },
+    remap: { label: 'Remap keys', title: 'Remap keys', sub: 'Turn any key into another key or a shortcut, everywhere or only in some apps.' },
     macros: { label: 'Macros', title: 'Macros', sub: 'Saved sequences of keys, text, waits and clicks. Start one with a hotkey or a knob gesture.' },
     controls: { label: 'Mouse & hints', title: 'Mouse & hints', sub: 'Use the mouse from the keyboard. Both are off until you turn them on.' },
     lighting: { label: 'Lighting', title: 'Lighting', sub: 'Saved looks for the keyboard’s lights. Apply one whenever you like.' },
@@ -156,6 +157,20 @@ registerLocale('en', 'English', {
       none: 'No matching open app. You can type the exe name below.',
       manual: 'Name.exe',
     },
+  },
+
+  remap: {
+    lead: 'Click a key field, then press a key. A key that becomes another single key works exactly like it, held for as long as you hold it. A key that becomes a shortcut sends it once per press.',
+    empty: 'No keys are remapped yet.',
+    add: 'Remap a key',
+    from: 'Key',
+    to: 'Becomes',
+    where: 'Where',
+    fromTitle: 'Click, then press the key to change',
+    toTitle: 'Click, then press a key or a shortcut',
+    onlyIn: 'Only in…',
+    delete: 'Delete this remap',
+    note: 'Remaps never apply while this window is in front, so you can always fix one here, and <em>Pause</em> in the tray menu turns them all off. They don’t reach apps running as administrator.',
   },
 
   macros: {

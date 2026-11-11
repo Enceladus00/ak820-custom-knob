@@ -1,14 +1,16 @@
 //! Injects keyboard and mouse input. Everything is marked with [`MARKER`],
 //! so our own hook lets it through.
 
+use knob_core::router::RemapSend;
 use knob_core::{HookKey, Key, KeyCombo, Modifiers, MouseButton};
 use windows::Win32::Foundation::POINT;
 use windows::Win32::UI::Input::KeyboardAndMouse::{
     GetAsyncKeyState, GetKeyboardLayout, INPUT, INPUT_0, INPUT_KEYBOARD, INPUT_MOUSE,
     KEYBD_EVENT_FLAGS, KEYBDINPUT, KEYEVENTF_EXTENDEDKEY, KEYEVENTF_KEYUP, KEYEVENTF_UNICODE,
-    MOUSE_EVENT_FLAGS, MOUSEEVENTF_HWHEEL, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP,
-    MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP,
-    MOUSEEVENTF_WHEEL, MOUSEINPUT, SendInput, VIRTUAL_KEY, VkKeyScanExW,
+    MAPVK_VK_TO_VSC, MOUSE_EVENT_FLAGS, MOUSEEVENTF_HWHEEL, MOUSEEVENTF_LEFTDOWN,
+    MOUSEEVENTF_LEFTUP, MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP, MOUSEEVENTF_RIGHTDOWN,
+    MOUSEEVENTF_RIGHTUP, MOUSEEVENTF_WHEEL, MOUSEINPUT, MapVirtualKeyW, SendInput, VIRTUAL_KEY,
+    VkKeyScanExW,
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     GetCursorPos, GetForegroundWindow, GetWindowThreadProcessId, SetCursorPos,
@@ -74,6 +76,39 @@ fn send(inputs: &[INPUT]) {
     unsafe {
         SendInput(inputs, size_of::<INPUT>() as i32);
     }
+}
+
+/// Sends what a remapped key stands for.
+pub fn remap(send: RemapSend) {
+    match send {
+        RemapSend::Down(vk) => remap_key(vk, true),
+        RemapSend::Up(vk) => remap_key(vk, false),
+        RemapSend::Tap(keys) => combo(keys),
+    }
+}
+
+/// Presses or releases a key in place of a remapped one. It carries the key's
+/// scan code too, because games that read scan codes ignore a key without one.
+pub fn remap_key(vk: u16, down: bool) {
+    let mut input = key_input(vk, down);
+    let scan = unsafe { MapVirtualKeyW(vk.into(), MAPVK_VK_TO_VSC) };
+    // Right Ctrl and Right Alt share their scan codes with the left keys.
+    let right_modifier = matches!(vk, 0xA3 | 0xA5);
+    unsafe {
+        let ki = &mut input.Anonymous.ki;
+        ki.wScan = scan as u16;
+        if right_modifier {
+            ki.dwFlags |= KEYEVENTF_EXTENDEDKEY;
+        }
+    }
+    send(&[input]);
+}
+
+/// The key that types `c` on the current layout without Shift or AltGr.
+pub fn plain_vk(c: char) -> Option<u16> {
+    key_for_char(c)
+        .filter(|(_, needed)| needed.is_empty())
+        .map(|(vk, _)| vk)
 }
 
 /// Sends one volume / mute key event (used to replay what the hook swallowed).

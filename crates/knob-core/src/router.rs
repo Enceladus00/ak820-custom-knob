@@ -1,9 +1,10 @@
 //! Decides what happens to each key press once an optional feature is on.
 //!
-//! With no hotkeys set and neither mouse mode nor click hints active, every
-//! key passes straight through.
+//! With no hotkeys or remaps set and neither mouse mode nor click hints
+//! active, every key passes straight through.
 
 use crate::keys::{Key, KeyCombo};
+use crate::remap::{Remap, RemapOutput, active_for};
 use crate::signal::Modifiers;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -78,15 +79,49 @@ pub struct KeyInfo {
     pub other_modifier_held: bool,
 }
 
+/// Input to send in place of a remapped key, straight from the hook so it
+/// stays in order with the keys typed around it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RemapSend {
+    Down(u16),
+    Up(u16),
+    Tap(KeyCombo),
+}
+
+impl RemapOutput {
+    fn on_press(self) -> RemapSend {
+        match self {
+            Self::Hold(vk) => RemapSend::Down(vk),
+            Self::Tap { combo, .. } => RemapSend::Tap(combo),
+        }
+    }
+
+    fn on_repeat(self) -> Option<RemapSend> {
+        match self {
+            Self::Hold(vk) => Some(RemapSend::Down(vk)),
+            Self::Tap { combo, repeats } => repeats.then_some(RemapSend::Tap(combo)),
+        }
+    }
+
+    fn on_release(self) -> Option<RemapSend> {
+        match self {
+            Self::Hold(vk) => Some(RemapSend::Up(vk)),
+            Self::Tap { .. } => None,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Decision {
     pub swallow: bool,
     pub event: Option<RouterEvent>,
+    pub send: Option<RemapSend>,
 }
 
 const PASS: Decision = Decision {
     swallow: false,
     event: None,
+    send: None,
 };
 const VK_ESC: u16 = 0x1B;
 const VK_BACKSPACE: u16 = 0x08;
@@ -121,6 +156,14 @@ pub struct Router {
     hotkeys_suspended: bool,
     /// Keys whose press was swallowed, so the release is swallowed too.
     swallowed: Vec<u16>,
+    remaps: Vec<Remap>,
+    /// Lower-case exe name of the app in front.
+    foreground: String,
+    /// The remaps that apply in the app in front.
+    active: Vec<(u16, RemapOutput)>,
+    /// Remapped keys that are down, with what they send. A key keeps its
+    /// remap until it is released, even if the rules or the app change.
+    held: Vec<(u16, RemapOutput)>,
 }
 
 impl Router {
@@ -136,14 +179,52 @@ impl Router {
         self.macro_running = running;
     }
 
-    /// While suspended no hotkey fires, so that a hotkey can be recorded in
-    /// Settings without setting itself off.
+    /// While suspended no hotkey fires and no key is remapped, so that keys
+    /// can be recorded in Settings and a bad remap can always be undone there.
     pub fn set_hotkeys_suspended(&mut self, suspended: bool) {
         self.hotkeys_suspended = suspended;
     }
 
     pub fn set_hints_active(&mut self, active: bool) {
         self.hints_active = active;
+    }
+
+    pub fn set_remaps(&mut self, remaps: Vec<Remap>) {
+        self.remaps = remaps;
+        self.active = active_for(&self.remaps, &self.foreground);
+    }
+
+    pub fn set_foreground(&mut self, exe: &str) {
+        self.foreground = exe.to_lowercase();
+        self.active = active_for(&self.remaps, &self.foreground);
+    }
+
+    /// Whether `vk` is remapped in the app in front.
+    pub fn is_remapped(&self, vk: u16) -> bool {
+        self.remap_for(vk).is_some()
+    }
+
+    /// Forgets every remapped key that is down and returns the keys that must
+    /// be released, so nothing stays stuck when remapping stops (Pause, a
+    /// crash, or a switch to the lock screen where the release is never seen).
+    pub fn take_held(&mut self) -> Vec<u16> {
+        self.held
+            .drain(..)
+            .filter_map(|(_, output)| match output {
+                RemapOutput::Hold(vk) => Some(vk),
+                RemapOutput::Tap { .. } => None,
+            })
+            .collect()
+    }
+
+    fn remap_for(&self, vk: u16) -> Option<RemapOutput> {
+        if self.hotkeys_suspended {
+            return None;
+        }
+        self.active
+            .iter()
+            .find(|(from, _)| *from == vk)
+            .map(|&(_, output)| output)
     }
 
     /// True when no key needs looking at.
@@ -153,6 +234,8 @@ impl Router {
             && !self.hints_active
             && !self.macro_running
             && self.swallowed.is_empty()
+            && self.active.is_empty()
+            && self.held.is_empty()
     }
 
     pub fn mouse_active(&self) -> bool {
@@ -167,13 +250,30 @@ impl Router {
         if !key.down {
             return self.release(key.vk);
         }
+        if let Some(&(_, output)) = self.held.iter().find(|(vk, _)| *vk == key.vk) {
+            return Decision {
+                swallow: true,
+                event: None,
+                send: output.on_repeat(), // auto-repeat of a remapped key
+            };
+        }
         if self.swallowed.contains(&key.vk) {
             return Decision {
                 swallow: true,
-                event: None, // auto-repeat of a key we already took
+                ..PASS // auto-repeat of a key we already took
             };
         }
-        let decision = self.press(key);
+        let mut decision = self.press(key);
+        // A remap applies only to a key no other feature wants right now, so
+        // hotkeys, mouse mode and hints keep working with remapped keys.
+        if !decision.swallow
+            && let Some(output) = self.remap_for(key.vk)
+        {
+            decision.swallow = true;
+            decision.send = Some(output.on_press());
+            self.held.push((key.vk, output));
+            return decision;
+        }
         if decision.swallow {
             self.swallowed.push(key.vk);
         }
@@ -181,6 +281,14 @@ impl Router {
     }
 
     fn release(&mut self, vk: u16) -> Decision {
+        if let Some(at) = self.held.iter().position(|(k, _)| *k == vk) {
+            let (_, output) = self.held.swap_remove(at);
+            return Decision {
+                swallow: true,
+                event: None,
+                send: output.on_release(),
+            };
+        }
         let Some(at) = self.swallowed.iter().position(|&k| k == vk) else {
             return PASS;
         };
@@ -191,6 +299,7 @@ impl Router {
                 control,
                 down: false,
             }),
+            send: None,
         }
     }
 
@@ -202,6 +311,7 @@ impl Router {
             return Decision {
                 swallow: true,
                 event: Some(RouterEvent::MacroStop),
+                send: None,
             };
         }
         if !self.hotkeys_suspended
@@ -213,6 +323,7 @@ impl Router {
             return Decision {
                 swallow: true,
                 event: Some(RouterEvent::Hotkey(hotkey.id)),
+                send: None,
             };
         }
         if !self.mouse_active || key.other_modifier_held {
@@ -222,6 +333,7 @@ impl Router {
             return Decision {
                 swallow: true,
                 event: Some(RouterEvent::MouseExit),
+                send: None,
             };
         }
         match mouse_control(key.vk) {
@@ -231,6 +343,7 @@ impl Router {
                     control,
                     down: true,
                 }),
+                send: None,
             },
             None => PASS,
         }
@@ -255,12 +368,14 @@ impl Router {
                 return Decision {
                     swallow: false,
                     event: Some(RouterEvent::HintCancel),
+                    send: None,
                 };
             }
         };
         Decision {
             swallow: true,
             event: Some(event),
+            send: None,
         }
     }
 }
@@ -328,7 +443,8 @@ mod tests {
             router.handle(ctrl_alt(0x4D)),
             Decision {
                 swallow: true,
-                event: None
+                event: None,
+                send: None
             }
         );
         let up = router.handle(release(0x4D));
@@ -500,6 +616,118 @@ mod tests {
         router.set_mouse_active(true);
         router.set_hotkeys_suspended(true);
         assert!(router.handle(press(0x25)).swallow);
+    }
+
+    const CAPS: u16 = 0x14;
+
+    fn caps_def(to: &str, apps: &[&str]) -> crate::remap::RemapDef {
+        crate::remap::RemapDef {
+            from: "CapsLock".parse().unwrap(),
+            to: to.parse().unwrap(),
+            apps: apps.iter().map(|a| a.to_string()).collect(),
+        }
+    }
+
+    fn caps_to(to: &str, apps: &[&str]) -> Router {
+        let mut router = Router::default();
+        router.set_foreground("notepad.exe");
+        router.set_remaps(vec![Remap::new(CAPS, &caps_def(to, apps))]);
+        router
+    }
+
+    #[test]
+    fn a_remapped_key_is_held_repeated_and_released() {
+        let mut router = caps_to("Esc", &[]);
+        assert!(!router.is_idle());
+        let down = router.handle(press(CAPS));
+        assert!(down.swallow);
+        assert_eq!(down.send, Some(RemapSend::Down(0x1B)));
+        assert_eq!(router.handle(press(CAPS)).send, Some(RemapSend::Down(0x1B)));
+        let up = router.handle(release(CAPS));
+        assert!(up.swallow);
+        assert_eq!(up.send, Some(RemapSend::Up(0x1B)));
+        assert_eq!(router.handle(press(0x41)), PASS);
+    }
+
+    #[test]
+    fn a_shortcut_is_sent_once_per_press() {
+        let mut router = caps_to("Win+D", &[]);
+        let combo = "Win+D".parse().unwrap();
+        assert_eq!(router.handle(press(CAPS)).send, Some(RemapSend::Tap(combo)));
+        let repeat = router.handle(press(CAPS));
+        assert!(repeat.swallow);
+        assert_eq!(repeat.send, None);
+        let up = router.handle(release(CAPS));
+        assert!(up.swallow);
+        assert_eq!(up.send, None);
+    }
+
+    #[test]
+    fn app_rules_follow_the_app_in_front() {
+        let mut router = caps_to("Esc", &["Code.exe"]);
+        assert!(router.is_idle());
+        assert_eq!(router.handle(press(CAPS)), PASS);
+        router.handle(release(CAPS));
+        router.set_foreground("code.exe");
+        assert_eq!(router.handle(press(CAPS)).send, Some(RemapSend::Down(0x1B)));
+    }
+
+    #[test]
+    fn a_held_key_keeps_its_remap_until_released() {
+        let mut router = caps_to("LeftCtrl", &["code.exe"]);
+        router.set_foreground("code.exe");
+        router.handle(press(CAPS));
+        router.set_foreground("notepad.exe"); // e.g. Ctrl+Tab to another app
+        router.set_remaps(Vec::new());
+        assert_eq!(router.handle(release(CAPS)).send, Some(RemapSend::Up(0xA2)));
+        assert!(router.is_idle());
+    }
+
+    #[test]
+    fn take_held_releases_everything_that_is_down() {
+        let mut router = caps_to("LeftCtrl", &[]);
+        router.handle(press(CAPS));
+        assert_eq!(router.take_held(), vec![0xA2]);
+        assert!(router.take_held().is_empty());
+        // The physical release that follows is not swallowed any more.
+        router.set_remaps(Vec::new());
+        assert_eq!(router.handle(release(CAPS)), PASS);
+    }
+
+    #[test]
+    fn remaps_stop_while_settings_is_in_front() {
+        let mut router = caps_to("Esc", &[]);
+        router.set_hotkeys_suspended(true);
+        assert_eq!(router.handle(press(CAPS)), PASS);
+        assert!(!router.is_remapped(CAPS));
+    }
+
+    #[test]
+    fn other_features_come_first() {
+        let mut router = caps_to("Esc", &[]);
+        let left = crate::remap::RemapDef {
+            from: "Left".parse().unwrap(),
+            to: "Home".parse().unwrap(),
+            apps: Vec::new(),
+        };
+        router.set_remaps(vec![
+            Remap::new(CAPS, &caps_def("Esc", &[])),
+            Remap::new(0x25, &left),
+        ]);
+        router.set_mouse_active(true);
+        assert_eq!(
+            router.handle(press(0x25)).event,
+            Some(RouterEvent::Mouse {
+                control: MouseControl::Left,
+                down: true
+            })
+        );
+        router.handle(release(0x25));
+        // A key that hints don't use closes them and is still remapped.
+        router.set_hints_active(true);
+        let caps = router.handle(press(CAPS));
+        assert_eq!(caps.event, Some(RouterEvent::HintCancel));
+        assert_eq!(caps.send, Some(RemapSend::Down(0x1B)));
     }
 
     #[test]

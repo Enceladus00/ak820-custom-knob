@@ -120,6 +120,9 @@ fn main() {
         log::error!("tray failed: {e}");
     }
 
+    // Let go of remapped keys while the input thread still runs: the process
+    // ends right after, before that thread could do it.
+    input::release_remaps();
     input::request_stop();
     log::info!("exiting");
     log::logger().flush();
