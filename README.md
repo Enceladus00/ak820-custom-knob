@@ -103,7 +103,9 @@ you pick. Caps Lock can become Esc or Ctrl, a key you never use can become
 Play / Pause, and F13 can mute your mic in Teams.
 
 A key that becomes another single key works exactly like it, held for as long
-as you hold it. A key that becomes a shortcut sends it once per press. Remaps
+as you hold it. A key that becomes a shortcut sends it once per press. A
+shortcut can be remapped too: Alt+1 can type `>`, with Alt let go while the
+character is typed. Remaps
 never apply while Settings is in front, so you can always undo one there, and
 *Paused* in the tray menu turns them all off.
 

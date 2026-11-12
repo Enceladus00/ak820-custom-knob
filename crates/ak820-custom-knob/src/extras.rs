@@ -268,21 +268,24 @@ impl Extras {
             .remaps
             .iter()
             .filter_map(|def| {
-                let vk = match def.from.key {
-                    Key::Vk(vk) => vk,
-                    // Looked up once, on the layout in use now.
-                    Key::Char(c) => match output::plain_vk(c) {
-                        Some(vk) => vk,
+                let (vk, shift) = match def.from.key {
+                    Key::Vk(vk) => (vk, false),
+                    // Looked up once, on the layout in use now. A character
+                    // typed with Shift (":") means that key with Shift.
+                    Key::Char(c) => match output::shifted_vk(c) {
+                        Some(found) => found,
                         None => {
                             log::warn!(
-                                "remap {}: no key types it without Shift or AltGr; skipped",
+                                "remap {}: no key types it without AltGr; skipped",
                                 def.from
                             );
                             return None;
                         }
                     },
                 };
-                Some(Remap::new(vk, def))
+                let mut mods = def.from.mods;
+                mods.shift |= shift;
+                Some(Remap::with_mods(vk, mods, def))
             })
             .collect();
         if !remaps.is_empty() {

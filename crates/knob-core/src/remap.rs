@@ -1,5 +1,5 @@
-//! Key remapping: one key becomes another key or a shortcut, in every app or
-//! only in some. Off until the user adds a rule.
+//! Key remapping: one key or shortcut becomes another key, a character or a
+//! shortcut, in every app or only in some. Off until the user adds a rule.
 
 use std::collections::HashSet;
 
@@ -7,12 +7,13 @@ use serde::{Deserialize, Serialize};
 
 use crate::config::Config;
 use crate::keys::{Key, KeyCombo};
+use crate::signal::Modifiers;
 
 /// One `[[remap]]` rule as written in the config.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RemapDef {
-    /// A single key, without Ctrl, Shift, Alt or Win.
+    /// A single key, or a key with Ctrl, Shift, Alt or Win (Alt+1).
     pub from: KeyCombo,
     /// A key, a character or a shortcut.
     pub to: KeyCombo,
@@ -34,8 +35,14 @@ pub enum RemapOutput {
     Hold(u16),
     /// A shortcut or a character, sent once per press. A plain character also
     /// repeats while held, like typing; a shortcut doesn't, so holding a key
-    /// mapped to Win+D doesn't flicker the desktop.
-    Tap { combo: KeyCombo, repeats: bool },
+    /// mapped to Win+D doesn't flicker the desktop. With `lift`, the modifiers
+    /// held for the original shortcut are let go while it is sent, so Alt+1
+    /// can type ">" instead of Alt+>.
+    Tap {
+        combo: KeyCombo,
+        repeats: bool,
+        lift: bool,
+    },
 }
 
 impl RemapOutput {
@@ -45,11 +52,26 @@ impl RemapOutput {
             Key::Char(_) => Self::Tap {
                 combo: to,
                 repeats: to.mods.is_empty(),
+                lift: false,
             },
             Key::Vk(_) => Self::Tap {
                 combo: to,
                 repeats: false,
+                lift: false,
             },
+        }
+    }
+
+    /// What a rule sends. A shortcut (Alt+1) can't hold a key, because its
+    /// modifiers would mix in, so it always taps with the modifiers lifted.
+    pub fn for_rule(from_mods: Modifiers, to: KeyCombo) -> Self {
+        if from_mods.is_empty() {
+            return Self::for_target(to);
+        }
+        Self::Tap {
+            combo: to,
+            repeats: to.mods.is_empty(),
+            lift: true,
         }
     }
 }
@@ -58,6 +80,8 @@ impl RemapOutput {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Remap {
     pub vk: u16,
+    /// Modifiers that must be held with the key. None: the key alone.
+    pub mods: Modifiers,
     pub output: RemapOutput,
     /// Lower-case exe names. Empty means every app.
     pub apps: Vec<String>,
@@ -65,9 +89,16 @@ pub struct Remap {
 
 impl Remap {
     pub fn new(vk: u16, def: &RemapDef) -> Self {
+        Self::with_mods(vk, def.from.mods, def)
+    }
+
+    /// A rule whose key needs these modifiers, e.g. Shift for a character
+    /// that the current layout types with Shift.
+    pub fn with_mods(vk: u16, mods: Modifiers, def: &RemapDef) -> Self {
         Self {
             vk,
-            output: RemapOutput::for_target(def.to),
+            mods,
+            output: RemapOutput::for_rule(mods, def.to),
             apps: def.apps.iter().map(|a| a.trim().to_lowercase()).collect(),
         }
     }
@@ -77,15 +108,31 @@ impl Remap {
     }
 }
 
-/// For each key, the rule that applies in this app: one limited to the app
-/// wins over one for every app.
-pub fn active_for(remaps: &[Remap], exe: &str) -> Vec<(u16, RemapOutput)> {
-    let mut active: Vec<(u16, RemapOutput)> = Vec::new();
+/// A rule in force in the app in front.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ActiveRemap {
+    pub vk: u16,
+    pub mods: Modifiers,
+    pub output: RemapOutput,
+}
+
+/// For each key (with its modifiers), the rule that applies in this app: one
+/// limited to the app wins over one for every app.
+pub fn active_for(remaps: &[Remap], exe: &str) -> Vec<ActiveRemap> {
+    let mut active: Vec<ActiveRemap> = Vec::new();
     let specific = remaps.iter().filter(|r| !r.apps.is_empty());
     let everywhere = remaps.iter().filter(|r| r.apps.is_empty());
     for rule in specific.chain(everywhere) {
-        if rule.applies_to(exe) && !active.iter().any(|(vk, _)| *vk == rule.vk) {
-            active.push((rule.vk, rule.output));
+        if rule.applies_to(exe)
+            && !active
+                .iter()
+                .any(|a| a.vk == rule.vk && a.mods == rule.mods)
+        {
+            active.push(ActiveRemap {
+                vk: rule.vk,
+                mods: rule.mods,
+                output: rule.output,
+            });
         }
     }
     active
@@ -101,11 +148,6 @@ impl Config {
         for rule in &self.remaps {
             let from = rule.from.to_string();
             let ctx = format!("remap {from}");
-            if !rule.from.mods.is_empty() {
-                errors.push(format!(
-                    "{ctx}: the key to change must be a single key, without Ctrl, Shift, Alt or Win"
-                ));
-            }
             if matches!(rule.from.key, Key::Vk(vk) if KNOB_KEYS.contains(&vk)) {
                 errors.push(format!(
                     "{ctx}: the volume and mute keys are used by the knob"
@@ -179,14 +221,37 @@ mod tests {
             RemapOutput::for_target(combo("Ctrl+Shift+M")),
             RemapOutput::Tap {
                 combo: combo("Ctrl+Shift+M"),
-                repeats: false
+                repeats: false,
+                lift: false
             }
         );
         assert_eq!(
             RemapOutput::for_target(combo(";")),
             RemapOutput::Tap {
                 combo: combo(";"),
-                repeats: true
+                repeats: true,
+                lift: false
+            }
+        );
+    }
+
+    #[test]
+    fn a_shortcut_taps_with_its_modifiers_lifted() {
+        let from = combo("Alt+1");
+        assert_eq!(
+            RemapOutput::for_rule(from.mods, combo(">")),
+            RemapOutput::Tap {
+                combo: combo(">"),
+                repeats: true,
+                lift: true
+            }
+        );
+        assert_eq!(
+            RemapOutput::for_rule(from.mods, combo("Esc")),
+            RemapOutput::Tap {
+                combo: combo("Esc"),
+                repeats: true,
+                lift: true
             }
         );
     }
@@ -211,6 +276,8 @@ mod tests {
                 rule("CapsLock", "LeftCtrl", &["code.exe"]),
                 rule("A", "B", &[]),
                 rule("B", "A", &[]),
+                rule("Alt+1", ">", &[]),
+                rule("1", "2", &[]),
             ])
             .is_empty()
         );
@@ -219,7 +286,8 @@ mod tests {
     #[test]
     fn bad_rules_are_reported() {
         for rules in [
-            vec![rule("Ctrl+A", "B", &[])],
+            vec![rule("Alt+1", "Alt+1", &[])],
+            vec![rule("Alt+1", "B", &[]), rule("alt+1", "C", &[])],
             vec![rule("VolumeUp", "B", &[])],
             vec![rule("A", "A", &[])],
             vec![rule("A", "B", &[" "])],
@@ -237,16 +305,19 @@ mod tests {
             Remap::new(0x14, &rule("CapsLock", "LeftCtrl", &["Code.exe"])),
             Remap::new(0x7C, &rule("F13", "F14", &["code.exe"])),
         ];
+        let pairs = |exe| {
+            active_for(&remaps, exe)
+                .into_iter()
+                .map(|a| (a.vk, a.output))
+                .collect::<Vec<_>>()
+        };
         assert_eq!(
-            active_for(&remaps, "code.exe"),
+            pairs("code.exe"),
             vec![
                 (0x14, RemapOutput::Hold(0xA2)),
                 (0x7C, RemapOutput::Hold(0x7D))
             ]
         );
-        assert_eq!(
-            active_for(&remaps, "notepad.exe"),
-            vec![(0x14, RemapOutput::Hold(0x1B))]
-        );
+        assert_eq!(pairs("notepad.exe"), vec![(0x14, RemapOutput::Hold(0x1B))]);
     }
 }

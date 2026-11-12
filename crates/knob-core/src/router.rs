@@ -4,7 +4,7 @@
 //! active, every key passes straight through.
 
 use crate::keys::{Key, KeyCombo};
-use crate::remap::{Remap, RemapOutput, active_for};
+use crate::remap::{ActiveRemap, Remap, RemapOutput, active_for};
 use crate::signal::Modifiers;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -95,12 +95,17 @@ pub enum RemapSend {
     Down(u16),
     Up(u16),
     Tap(KeyCombo),
+    /// Tap with the modifiers that are held let go meanwhile.
+    TapAlone(KeyCombo),
 }
 
 impl RemapOutput {
     fn on_press(self) -> RemapSend {
         match self {
             Self::Hold(vk) => RemapSend::Down(vk),
+            Self::Tap {
+                combo, lift: true, ..
+            } => RemapSend::TapAlone(combo),
             Self::Tap { combo, .. } => RemapSend::Tap(combo),
         }
     }
@@ -108,7 +113,7 @@ impl RemapOutput {
     fn on_repeat(self) -> Option<RemapSend> {
         match self {
             Self::Hold(vk) => Some(RemapSend::Down(vk)),
-            Self::Tap { combo, repeats } => repeats.then_some(RemapSend::Tap(combo)),
+            Self::Tap { repeats, .. } => repeats.then(|| self.on_press()),
         }
     }
 
@@ -169,7 +174,7 @@ pub struct Router {
     /// Lower-case exe name of the app in front.
     foreground: String,
     /// The remaps that apply in the app in front.
-    active: Vec<(u16, RemapOutput)>,
+    active: Vec<ActiveRemap>,
     /// Remapped keys that are down, with what they send. A key keeps its
     /// remap until it is released, even if the rules or the app change.
     held: Vec<(u16, RemapOutput)>,
@@ -208,9 +213,9 @@ impl Router {
         self.active = active_for(&self.remaps, &self.foreground);
     }
 
-    /// Whether `vk` is remapped in the app in front.
+    /// Whether `vk` on its own is remapped in the app in front.
     pub fn is_remapped(&self, vk: u16) -> bool {
-        self.remap_for(vk).is_some()
+        !self.hotkeys_suspended && self.active.iter().any(|a| a.vk == vk && a.mods.is_empty())
     }
 
     /// Forgets every remapped key that is down and returns the keys that must
@@ -242,14 +247,23 @@ impl Router {
             })
     }
 
-    fn remap_for(&self, vk: u16) -> Option<RemapOutput> {
+    /// The rule for this press: one for exactly these modifiers (Alt+1) wins
+    /// over one for the key alone, which applies whatever is held with it.
+    fn remap_for(&self, key: KeyInfo) -> Option<RemapOutput> {
         if self.hotkeys_suspended {
             return None;
         }
-        self.active
-            .iter()
-            .find(|(from, _)| *from == vk)
-            .map(|&(_, output)| output)
+        let rule = |exact: bool| {
+            self.active.iter().find(|a| {
+                a.vk == key.vk
+                    && if exact {
+                        !a.mods.is_empty() && a.mods == key.mods
+                    } else {
+                        a.mods.is_empty()
+                    }
+            })
+        };
+        rule(true).or_else(|| rule(false)).map(|a| a.output)
     }
 
     /// True when no key needs looking at.
@@ -292,7 +306,7 @@ impl Router {
         // A remap applies only to a key no other feature wants right now, so
         // hotkeys, mouse mode and hints keep working with remapped keys.
         if !decision.swallow
-            && let Some(output) = self.remap_for(key.vk)
+            && let Some(output) = self.remap_for(key)
         {
             decision.swallow = true;
             decision.send = Some(output.on_press());
@@ -714,6 +728,44 @@ mod tests {
         // The physical release that follows is not swallowed any more.
         router.set_remaps(Vec::new());
         assert_eq!(router.handle(release(CAPS)), PASS);
+    }
+
+    #[test]
+    fn a_shortcut_rule_needs_its_modifiers_and_wins_over_the_key_alone() {
+        let def = |from: &str, to: &str| crate::remap::RemapDef {
+            from: from.parse().unwrap(),
+            to: to.parse().unwrap(),
+            apps: Vec::new(),
+        };
+        let mut router = Router::default();
+        router.set_remaps(vec![
+            Remap::new(0x31, &def("Alt+1", ">")),
+            Remap::new(0x31, &def("1", "2")),
+        ]);
+        let alt = |vk| KeyInfo {
+            mods: Modifiers {
+                alt: true,
+                ..Modifiers::default()
+            },
+            ..press(vk)
+        };
+        let gt = ">".parse().unwrap();
+        assert_eq!(router.handle(alt(0x31)).send, Some(RemapSend::TapAlone(gt)));
+        assert_eq!(router.handle(alt(0x31)).send, Some(RemapSend::TapAlone(gt)));
+        let up = router.handle(release(0x31));
+        assert!(up.swallow);
+        assert_eq!(up.send, None);
+        assert_eq!(router.handle(press(0x31)).send, Some(RemapSend::Down(0x32)));
+        router.handle(release(0x31));
+        // Ctrl+1 matches no shortcut rule, so the rule for the key alone applies.
+        let ctrl = KeyInfo {
+            mods: Modifiers {
+                ctrl: true,
+                ..Modifiers::default()
+            },
+            ..press(0x31)
+        };
+        assert_eq!(router.handle(ctrl).send, Some(RemapSend::Down(0x32)));
     }
 
     #[test]

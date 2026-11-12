@@ -465,7 +465,7 @@ function remapRow(rule, i) {
   return `<div class="remap-row">
     <div class="remap-key">
       <span class="param-label">${t('remap.from')}</span>
-      <input class="keycap" readonly data-keycap="remaps.${i}.from" data-keymode="single" value="${esc(rule.from)}" title="${esc(tPlain('remap.fromTitle'))}" aria-label="${esc(tPlain('remap.from'))}">
+      <input class="keycap" readonly data-keycap="remaps.${i}.from" data-keymode="source" value="${esc(rule.from)}" title="${esc(tPlain('remap.fromTitle'))}" aria-label="${esc(tPlain('remap.from'))}">
     </div>
     <span class="remap-arrow" aria-hidden="true">→</span>
     <div class="remap-key">
@@ -648,7 +648,7 @@ function stepFields(step, path) {
   if (step.step === 'key_down' || step.step === 'key_up') {
     return `<div class="param keyfield single">
       <span class="param-label">${t(`macros.steps.${step.step}`)}</span>
-      <input class="keycap" readonly data-keycap="${path}.key" data-keymode="single" value="${esc(step.key)}" title="${esc(tPlain('remap.fromTitle'))}" aria-label="${esc(tPlain(`macros.steps.${step.step}`))}">
+      <input class="keycap" readonly data-keycap="${path}.key" data-keymode="single" value="${esc(step.key)}" title="${esc(tPlain('remap.keyTitle'))}" aria-label="${esc(tPlain(`macros.steps.${step.step}`))}">
     </div>`;
   }
   if (step.step === 'move') {
@@ -1392,14 +1392,15 @@ function loneModifier(e) {
 }
 
 /**
- * What a key field records. "single" (the key a remap changes): one key,
- * modifiers included, with nothing held alongside. "target" (what it
- * becomes): a lone modifier key or any combination. Otherwise: a combination.
+ * What a key field records. "single" (a macro's held key): one key,
+ * modifiers included, with nothing held alongside. "source" (the key a remap
+ * changes) and "target" (what it becomes): a lone modifier key or any
+ * combination. Otherwise: a combination.
  */
 function keyForField(e, mode) {
   const lone = loneModifier(e);
   if (mode === 'single') return lone ?? keyFromEvent(e)?.key ?? null;
-  if (mode === 'target' && lone) return lone;
+  if ((mode === 'source' || mode === 'target') && lone) return lone;
   return comboFromEvent(e);
 }
 

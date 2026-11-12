@@ -84,6 +84,35 @@ pub fn remap(send: RemapSend) {
         RemapSend::Down(vk) => remap_key(vk, true),
         RemapSend::Up(vk) => remap_key(vk, false),
         RemapSend::Tap(keys) => combo(keys),
+        RemapSend::TapAlone(keys) => without_modifiers(|| combo(keys)),
+    }
+}
+
+/// Left and right Shift, Ctrl, Alt and Win.
+const SIDED_MODIFIERS: [u16; 8] = [0xA0, 0xA1, 0xA2, 0xA3, 0xA4, 0xA5, 0x5B, 0x5C];
+
+/// Lets go of the modifier keys that are held, runs `f`, then presses them
+/// again, so a remapped Alt+1 types ">" rather than Alt+>, and holding Alt
+/// keeps working for the next press.
+fn without_modifiers(f: impl FnOnce()) {
+    let held: Vec<u16> = SIDED_MODIFIERS
+        .into_iter()
+        .filter(|&vk| unsafe { GetAsyncKeyState(vk as i32) } < 0)
+        .collect();
+    // A lone Alt or Win press and release would open a menu.
+    let menu_key = held
+        .iter()
+        .any(|vk| matches!(vk, 0xA4 | 0xA5 | 0x5B | 0x5C));
+    if menu_key {
+        mask_menu();
+    }
+    let up: Vec<INPUT> = held.iter().map(|&vk| scan_key_input(vk, false)).collect();
+    send(&up);
+    f();
+    let down: Vec<INPUT> = held.iter().map(|&vk| scan_key_input(vk, true)).collect();
+    send(&down);
+    if menu_key {
+        mask_menu();
     }
 }
 
@@ -91,6 +120,10 @@ pub fn remap(send: RemapSend) {
 /// key's scan code too, because games that read scan codes ignore a key
 /// without one.
 pub fn remap_key(vk: u16, down: bool) {
+    send(&[scan_key_input(vk, down)]);
+}
+
+fn scan_key_input(vk: u16, down: bool) -> INPUT {
     let mut input = key_input(vk, down);
     let scan = unsafe { MapVirtualKeyW(vk.into(), MAPVK_VK_TO_VSC) };
     // Right Ctrl and Right Alt share their scan codes with the left keys.
@@ -102,7 +135,7 @@ pub fn remap_key(vk: u16, down: bool) {
             ki.dwFlags |= KEYEVENTF_EXTENDEDKEY;
         }
     }
-    send(&[input]);
+    input
 }
 
 /// The key that types `c` on the current layout without Shift or AltGr.
@@ -110,6 +143,14 @@ pub fn plain_vk(c: char) -> Option<u16> {
     key_for_char(c)
         .filter(|(_, needed)| needed.is_empty())
         .map(|(vk, _)| vk)
+}
+
+/// The key that types `c` on the current layout and whether it needs Shift.
+/// `None` when it needs AltGr or no key types it.
+pub fn shifted_vk(c: char) -> Option<(u16, bool)> {
+    key_for_char(c)
+        .filter(|(_, needed)| !needed.ctrl && !needed.alt && !needed.win)
+        .map(|(vk, needed)| (vk, needed.shift))
 }
 
 /// Sends one volume / mute key event (used to replay what the hook swallowed).

@@ -168,13 +168,14 @@ registerLocale('en', 'English', {
   },
 
   remap: {
-    lead: 'Click a key field, then press a key. A key that becomes another single key works exactly like it, held for as long as you hold it. A key that becomes a shortcut sends it once per press.',
+    lead: 'Click a key field, then press a key or a shortcut. A key that becomes another single key works exactly like it, held for as long as you hold it. A key that becomes a shortcut sends it once per press. A shortcut such as Alt+1 can become a character such as > — its Alt is let go while the character is typed.',
     empty: 'No keys are remapped yet.',
     add: 'Remap a key',
     from: 'Key',
     to: 'Becomes',
     where: 'Where',
-    fromTitle: 'Click, then press the key to change',
+    fromTitle: 'Click, then press the key or shortcut to change',
+    keyTitle: 'Click, then press a key',
     toTitle: 'Click, then press a key or a shortcut',
     onlyIn: 'Only in…',
     delete: 'Delete this remap',
