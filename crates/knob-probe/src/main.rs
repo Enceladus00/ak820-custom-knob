@@ -55,6 +55,14 @@ fn main() {
             rgb::set(&dir, secs, &args[1..]);
             return;
         }
+        Some("rgb-bench") => {
+            rgb::bench(&dir, secs, &args[1..]);
+            return;
+        }
+        Some("rgb-stream") => {
+            rgb::stream(&dir, secs, &args[1..]);
+            return;
+        }
         _ => {}
     }
 

@@ -1,6 +1,6 @@
 # RGB lighting research
 
-Goal: control the AK820 MAX lighting from this program (effects, colours,
+Goal: control the AK820 MAX Ultra lighting from this program (effects, colours,
 brightness, per-key colours), and later tie it to knob modes and apps.
 
 Status (2026-11-09): the protocol is known from the vendor's own web driver
@@ -36,7 +36,7 @@ The dongle is `0C45:FEFC`, product string `HFD AJAZZ AK820MAX`.
 |---|---|---|
 | AJAZZ `OemDrv.exe` (installed) | **No** | Looks only for `258A:010C` and `3554:FA09`, a different chip. Logged run: finds 0 devices, sends nothing. |
 | [uzuw's Linux configurator](https://github.com/uzuw/ajazz-ak820-max-software-for-linux) | No | Same `258A`/`3554` hardware, despite the same model name. |
-| AULA's web driver, `hev.aulacn.com` | **Yes** | Lists `productId 65276` as `AJAZZ AK820MAX`, on usage page `0xFF80`. The source of everything below. |
+| AULA's web driver, `hev.aulacn.com` | **No** (refuses it) | Its code bundle lists `productId 65276` as `AJAZZ AK820MAX` in the generic and AJAZZ lists, on usage page `0xFF80`, and is the source of everything below; the AULA site itself only uses its AULA list and answers "This device is not supported!!". |
 | [HaloBattery `aula.py`](https://github.com/ahmedkhursheed23/HaloBattery/blob/main/providers/aula.py) | Yes | Battery only, confirmed on an AULA F87 Pro V2C using the same dongle ID. |
 
 Two AK820 MAX versions are sold under the same name, so advice and tools for
@@ -124,7 +124,22 @@ knob-probe hid-info
 knob-probe rgb-read [--wait <seconds>]
 knob-probe rgb-set [--effect N] [--color RRGGBB] [--brightness N] [--speed N] [--apply]
 knob-probe rgb-set --restore <32 hex digits> --apply
+knob-probe rgb-bench [--count N]
+knob-probe rgb-bench --reads
+knob-probe rgb-stream [--wired] [--seconds N]
 ```
+
+`rgb-bench` times colour-only writes (default 30, at most 200), restores the
+original block, and prints the steps of the persistence test; every write is
+a stored write, so keep runs rare. `--reads` times reads only and changes
+nothing. `rgb-stream` sends the driver's live per-key stream (`0x35`, or
+`0x32` over the cable with `--wired`) and stores nothing; on this keyboard
+it shows nothing either.
+
+Sound-reactive and game-driven lighting were built on top of `0x23` and then
+parked on the `live-lighting` branch: they would write several times a
+second, and each write is saved to flash. This project never risks wearing
+out the keyboard.
 
 `rgb-read` only reads. `rgb-set` reads the current state, prints a backup, and
 without `--apply` shows what it would send and stops. With `--apply` it writes,
@@ -141,12 +156,64 @@ reads back and compares. All output is saved in `probe-logs\`.
 4. Find out whether writes survive a power cycle. The driver writes on every
    change, but repeated writes may wear flash, so frequent automatic changes
    need checking first.
+   **Result (2026-11-12, firmware 1.36, 2.4 GHz):** writes survive. Brightness
+   set to 2, keyboard switched off and on, read back 2. A `0x23` write takes
+   29.8–31.9 ms (median 30.8, about 33 per second), steady from one write to
+   the next. So the lighting block is stored, most likely in flash, and
+   streaming colours through `0x23` should be treated as wearing it.
+   Unknowns: whether a colour-only write is stored too (the read-back never
+   shows colour, so this can't be tested), and whether per-key `0x24` writes
+   behave differently.
 5. Layouts in Settings are done: `[[lighting]]` in the config, applied only
    when the user clicks Apply. Still to do is a `lighting` entry per mode,
    applied on mode switch, which depends on step 4. Effect 0 isn't offered
    until "off" is understood.
 6. Per-key colours use command `0x24` with `index R G B` entries. Not
-   implemented yet.
+   implemented. The driver sends it with the key map, lighting and macros
+   when a profile is saved, so it is most likely stored like `0x23`.
+7. **Live per-key stream, `0x35`** (found 2026-11-12, not yet tried on the
+   keyboard). The driver's "music" tab (`musicVersion: 2` on product 65278)
+   computes every key's colour itself and sends a frame about every 50 ms,
+   with no start command. On 32-byte receivers each frame is 6 packets:
+   `AA 35 <packet 0-5> 00` then 28 bytes, 14 keys of RGB565 each, high byte
+   first, 12 ms apart, without waiting for replies. Keys follow the driver's
+   fixed 82-key order (`knob_rgb::KEYS`); the last two slots are padding.
+   64-byte receivers use `0x32` with `index R G B` entries instead.
+   **Model caution:** this keyboard is the AK820 MAX **Ultra**. The driver
+   has no entry with that name: about a dozen entries are called "AK820MAX"
+   or "AJAZZ AK820MAX" under different product IDs, two of them on this
+   receiver's 65276 (one with music, one without), and nothing here shows
+   which one the driver would pick for the Ultra. The key order used comes
+   from the 65276 music entry (`keys: kt()`) and is unconfirmed for the
+   Ultra. 65278 is a different receiver.
+   **Tried 2026-11-12 over 2.4 GHz: nothing shows.** `rgb-stream` sent 15
+   frames/s; every packet was answered with `55 35`, echoing the data, and
+   a write took about 0.4 ms. The keys didn't change, in Static (`0x01`) or
+   in Custom. Writing effect `0x80` reads back as `0x14` and turns the keys
+   off (empty per-key table); the stream didn't show there either. The echo
+   may come from the receiver alone, without reaching the keyboard. Untried:
+   the USB cable, and a music mode switched on from the keyboard itself.
+   **Why, most likely:** the driver bundle keeps one device list per brand
+   site (`wr(supName)`). The 65276 "AJAZZ AK820MAX" entry with music is in
+   the generic list (`""`); AJAZZ's own list (`ajazz`) has the same entry
+   with **no `musicVersion` and no key list**, so AJAZZ doesn't offer live
+   colours for this receiver. The AULA site (`hev.aulacn.com`) uses
+   `supName: "aula"`, whose list has no entry for 65276, and answers
+   "This device is not supported!!" when connecting. Conclusion: no live
+   per-key stream on this keyboard over 2.4 GHz is known; every colour
+   change goes through the stored `0x23` block.
+   **USB cable, also tried 2026-11-12: nothing shows either.** Wired, the
+   keyboard is `0C45:80A0` "KEYBOARD AK820MAX"; its vendor interface is
+   `MI_02` (usage page `0xFF68`, usage `0x61`, 64-byte reports). `MI_03`
+   (`0xFF67`, 4 KB output) is the bulk flash/image channel, never to be
+   used. `rgb-stream --wired` sent the driver's `0x32` stream (`[index R G
+   B]` per key, 56 bytes per packet, 6 packets) at 20 frames/s for 15 s and
+   again for 5 s: every packet was answered with `55 32` echoing the data,
+   in about 4 ms, and the keys stayed cyan throughout. AJAZZ's list has the
+   wired 32928 entry with no music either.
+   **Timing:** a `0x13` read over 2.4 GHz takes 3 ms (2.7-5.0, `rgb-bench
+   --reads`), a `0x23` write 31 ms, so each write costs about 28 ms of work
+   on the keyboard: consistent with a flash save on every write.
 
 ## Ideas this opens up
 

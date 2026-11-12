@@ -1,11 +1,12 @@
-//! Lighting protocol of the AK820 MAX 2.4 GHz receiver (`0C45:FEFC`), usage
+//! Lighting protocol of the AK820 MAX Ultra 2.4 GHz receiver (`0C45:FEFC`), usage
 //! page `0xFF80`. See `docs/rgb-research.md` for where it comes from.
 //!
 //! This crate only builds and parses bytes; it never touches a device.
 //!
 //! [`Command`] is deliberately closed. The same protocol has commands that
 //! factory-reset the keyboard or write its flash, and the safest way never to
-//! send them is to have no way of encoding them.
+//! send them is to have no way of encoding them. The live colour stream
+//! ([`stream_packets`]) has its own fixed command for the same reason.
 
 /// Vendor and product of the 2.4 GHz receiver.
 pub const VID: u16 = 0x0C45;
@@ -277,9 +278,156 @@ impl LedState {
     }
 }
 
+/// Command of the live per-key colour stream on 32-byte receivers. The
+/// vendor driver's music mode sends a whole frame about every 50 ms, so it
+/// is meant for streaming, unlike [`Command::WriteLed`].
+pub const STREAM_CMD: u8 = 0x35;
+/// Keys whose colours one stream packet carries.
+const STREAM_KEYS_PER_PACKET: usize = 14;
+/// Packets in one frame; the last two slots are padding, as in the driver.
+pub const STREAM_PACKETS: usize = KEYS.len().div_ceil(STREAM_KEYS_PER_PACKET);
+/// Gap the vendor driver leaves between the packets of a frame.
+pub const STREAM_PACKET_GAP_MS: u64 = 12;
+
+/// The keys in the order the stream carries them: name, row, column.
+/// Taken from the vendor driver's entry "AJAZZ AK820MAX" on this receiver's
+/// product 65276 (`keys: kt()`, 82 keys, 75 %). The driver has no entry for
+/// the AK820 MAX Ultra by name, so this order is unconfirmed for it.
+#[rustfmt::skip]
+pub const KEYS: [(&str, u8, u8); 82] = [
+    ("Esc", 0, 0), ("F1", 0, 1), ("F2", 0, 2), ("F3", 0, 3), ("F4", 0, 4),
+    ("F5", 0, 5), ("F6", 0, 6), ("F7", 0, 7), ("F8", 0, 8), ("F9", 0, 9),
+    ("F10", 0, 10), ("F11", 0, 11), ("F12", 0, 12), ("Delete", 0, 13),
+    ("`", 1, 0), ("1", 1, 1), ("2", 1, 2), ("3", 1, 3), ("4", 1, 4),
+    ("5", 1, 5), ("6", 1, 6), ("7", 1, 7), ("8", 1, 8), ("9", 1, 9),
+    ("0", 1, 10), ("-", 1, 11), ("=", 1, 12), ("Backspace", 1, 13), ("Home", 1, 14),
+    ("Tab", 2, 0), ("Q", 2, 1), ("W", 2, 2), ("E", 2, 3), ("R", 2, 4),
+    ("T", 2, 5), ("Y", 2, 6), ("U", 2, 7), ("I", 2, 8), ("O", 2, 9),
+    ("P", 2, 10), ("[", 2, 11), ("]", 2, 12), ("\\", 2, 13), ("PgUp", 2, 14),
+    ("Caps", 3, 0), ("A", 3, 1), ("S", 3, 2), ("D", 3, 3), ("F", 3, 4),
+    ("G", 3, 5), ("H", 3, 6), ("J", 3, 7), ("K", 3, 8), ("L", 3, 9),
+    (";", 3, 10), ("'", 3, 11), ("Enter", 3, 13), ("PgDn", 3, 14),
+    ("LShift", 4, 0), ("Z", 4, 1), ("X", 4, 2), ("C", 4, 3), ("V", 4, 4),
+    ("B", 4, 5), ("N", 4, 6), ("M", 4, 7), (",", 4, 8), (".", 4, 9),
+    ("/", 4, 10), ("RShift", 4, 11), ("Up", 4, 13), ("End", 4, 14),
+    ("LCtrl", 5, 0), ("Win", 5, 1), ("LAlt", 5, 2), ("Space", 5, 5),
+    ("RAlt", 5, 9), ("Fn", 5, 10), ("RCtrl", 5, 11), ("Left", 5, 12),
+    ("Down", 5, 13), ("Right", 5, 14),
+];
+
+/// One colour per entry of [`KEYS`], sent as RGB565, high byte first.
+pub fn stream_packets(colors: &[[u8; 3]; KEYS.len()]) -> [[u8; FRAME_LEN]; STREAM_PACKETS] {
+    let mut data = [0u8; STREAM_PACKETS * STREAM_KEYS_PER_PACKET * 2];
+    for (i, &[r, g, b]) in colors.iter().enumerate() {
+        let rgb565 = (u16::from(r & 0xF8) << 8) | (u16::from(g & 0xFC) << 3) | u16::from(b >> 3);
+        data[2 * i..2 * i + 2].copy_from_slice(&rgb565.to_be_bytes());
+    }
+    let per_packet = STREAM_KEYS_PER_PACKET * 2;
+    std::array::from_fn(|i| {
+        let mut packet = [0u8; FRAME_LEN];
+        packet[0] = REQUEST;
+        packet[1] = STREAM_CMD;
+        packet[2] = i as u8;
+        packet[4..4 + per_packet].copy_from_slice(&data[i * per_packet..(i + 1) * per_packet]);
+        packet
+    })
+}
+
+/// The keyboard over its USB cable (`0C45:80A0`) and its 64-byte vendor
+/// interface. Interface 3 (usage page `0xFF67`, 4 KB writes) is the bulk
+/// flash/image channel and must not be used.
+pub const PID_WIRED: u16 = 0x80A0;
+pub const WIRED_USAGE_PAGE: u16 = 0xFF68;
+pub const WIRED_USAGE: u16 = 0x0061;
+pub const WIRED_FRAME_LEN: usize = 64;
+/// Live per-key stream on 64-byte links, as the vendor driver's music mode
+/// sends it: `[key index, R, G, B]` per key.
+pub const WIRED_STREAM_CMD: u8 = 0x32;
+
+/// Key index of each entry of [`KEYS`], from the same driver layout.
+#[rustfmt::skip]
+pub const KEY_INDEX: [u8; 82] = [
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 106,
+    16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 92, 104,
+    32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 60, 105,
+    48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 76, 108,
+    64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 90, 107,
+    80, 81, 82, 83, 84, 85, 87, 88, 89, 91,
+];
+
+/// One colour per entry of [`KEYS`], split into 64-byte packets the way the
+/// driver's `sendReportSuper` does. Each packet waits for a reply.
+pub fn wired_stream_packets(colors: &[[u8; 3]; KEYS.len()]) -> Vec<[u8; WIRED_FRAME_LEN]> {
+    let payload: Vec<u8> = colors
+        .iter()
+        .zip(KEY_INDEX)
+        .flat_map(|(&[r, g, b], index)| [index, r, g, b])
+        .collect();
+    let chunk = WIRED_FRAME_LEN - HEADER_LEN;
+    let count = payload.len().div_ceil(chunk);
+    let tail = payload.len() % chunk;
+    (0..count)
+        .map(|i| {
+            let last = i == count - 1;
+            let start = i * chunk;
+            let end = (start + chunk).min(payload.len());
+            let len = if last && i != 0 && tail != 0 {
+                tail
+            } else {
+                chunk
+            };
+            let mut packet = [0u8; WIRED_FRAME_LEN];
+            packet[0] = REQUEST;
+            packet[1] = WIRED_STREAM_CMD;
+            packet[2] = len as u8;
+            packet[3..5].copy_from_slice(&(start as u16).to_le_bytes());
+            packet[6] = u8::from(last);
+            packet[HEADER_LEN..HEADER_LEN + end - start].copy_from_slice(&payload[start..end]);
+            packet
+        })
+        .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_wired_frame_is_six_packets_of_index_and_colour() {
+        let mut colors = [[0u8; 3]; KEYS.len()];
+        colors[13] = [1, 2, 3];
+        colors[81] = [4, 5, 6];
+        let packets = wired_stream_packets(&colors);
+        assert_eq!(packets.len(), 6);
+        assert_eq!(packets[0][..8], [0xAA, 0x32, 56, 0, 0, 0, 0, 0]);
+        assert_eq!(packets[0][8 + 52..8 + 56], [106, 1, 2, 3]);
+        assert_eq!(packets[5][..8], [0xAA, 0x32, 48, 24, 1, 0, 1, 0]);
+        assert_eq!(packets[5][8 + 44..8 + 48], [91, 4, 5, 6]);
+    }
+
+    #[test]
+    fn a_stream_frame_is_six_numbered_packets_of_rgb565() {
+        let mut colors = [[0u8; 3]; KEYS.len()];
+        colors[0] = [255, 0, 0];
+        colors[14] = [0, 255, 0];
+        colors[81] = [0, 0, 255];
+        let packets = stream_packets(&colors);
+        assert_eq!(packets.len(), 6);
+        for (i, p) in packets.iter().enumerate() {
+            assert_eq!(p[..4], [0xAA, 0x35, i as u8, 0]);
+        }
+        assert_eq!(packets[0][4..6], [0xF8, 0x00]);
+        assert_eq!(packets[1][4..6], [0x07, 0xE0]);
+        // Key 81 is the 12th slot of the last packet; two padding slots follow.
+        assert_eq!(packets[5][4 + 22..4 + 24], [0x00, 0x1F]);
+        assert_eq!(packets[5][4 + 24..], [0, 0, 0, 0]);
+    }
+
+    #[test]
+    fn the_stream_layout_has_no_duplicate_positions() {
+        let mut seen = std::collections::HashSet::new();
+        assert!(KEYS.iter().all(|&(_, r, c)| seen.insert((r, c))));
+    }
 
     fn sample() -> LedState {
         LedState::parse(&[1, 255, 0, 10, 255, 0, 0, 0, 0, 5, 3, 0, 0, 0, 0xAA, 0x55]).unwrap()
