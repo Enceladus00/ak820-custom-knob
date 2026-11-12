@@ -513,3 +513,15 @@ select.special { min-height: 34px; min-width: 0; font-size: 13px; color: var(--m
 input[type="color"] { width: 44px; height: 30px; padding: 2px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); cursor: pointer; }
 .apply-row { display: flex; align-items: center; gap: 14px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
 .apply-row .hint { color: var(--muted); }
+
+/* ---------------------------------------------------------------- effects */
+.effect-preview { margin-bottom: 6px; }
+.effect-preview canvas { display: block; width: 100%; aspect-ratio: 15 / 6.4; max-height: 260px; border-radius: 8px; background: #121418; }
+.effect-preview-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.effect-preview-foot .hint { margin: 8px 0; }
+.effect-color { display: inline-flex; align-items: center; gap: 2px; }
+.color-controls { flex-wrap: wrap; }
+.setting-row.effect-when { grid-template-columns: 1fr; gap: 10px; }
+.when-list { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.when-list .chip { gap: 4px; }
+.when-add { display: flex; align-items: center; gap: 8px; }

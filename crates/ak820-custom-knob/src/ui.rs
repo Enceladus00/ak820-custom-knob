@@ -421,6 +421,7 @@ fn show_menu(hwnd: HWND) {
             ID_PAUSE => {
                 knob_win::input::set_paused(!paused);
                 crate::extras::send(crate::extras::ExtrasMsg::Paused(!paused));
+                crate::effects::send(crate::effects::EffectsMsg::Paused(!paused));
                 log::info!("{}", if paused { "resumed" } else { "paused" });
                 osd::show(tr(if paused {
                     Text::OsdResumed

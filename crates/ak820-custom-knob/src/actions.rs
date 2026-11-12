@@ -34,9 +34,16 @@ impl Actions {
         match output {
             Output::Replay { key, down } => output::hook_key(key, down),
             Output::ModeChanged {
-                mode_name, profile, ..
+                mode_name,
+                mode_id,
+                profile,
+                ..
             } => {
                 log::info!("mode: {mode_name} (profile {profile})");
+                crate::effects::send(crate::effects::EffectsMsg::Mode {
+                    id: mode_id,
+                    name: mode_name.clone(),
+                });
                 ui::notify(UiEvent::Mode {
                     name: mode_name,
                     announce,

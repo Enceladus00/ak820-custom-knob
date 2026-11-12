@@ -36,6 +36,26 @@ pub enum Command {
     ReadInfo,
     ReadLed,
     WriteLed,
+    /// A plain read of one stored settings block, for backups.
+    ReadBlock(ReadBlock),
+    /// Patched firmware only ("live lighting", see `docs/custom-firmware.md`):
+    /// apply a lighting block in RAM without storing it. Stock firmware
+    /// echoes it and changes nothing.
+    LiveLed,
+    /// Patched firmware only: go back to the stored lighting, again without
+    /// writing anything.
+    LiveRestore,
+    /// Patched firmware only: answers with [`LiveInfo`]. Stock firmware
+    /// echoes it with an empty payload.
+    Identify,
+    /// LIVE v2: store an effect in a RAM slot ([`EffectDef::define_request`]).
+    DefineEffect,
+    /// LIVE v2: start the effect in a slot.
+    PlayEffect,
+    /// LIVE v2: stop any effect and go back to the current lighting.
+    StopEffect,
+    /// LIVE v2: tell the engine how long one LED frame takes, in microseconds.
+    SetFramePeriod,
 }
 
 impl Command {
@@ -44,7 +64,201 @@ impl Command {
             Command::ReadInfo => 0x10,
             Command::ReadLed => 0x13,
             Command::WriteLed => 0x23,
+            Command::ReadBlock(block) => block.0,
+            Command::LiveLed => 0x30,
+            Command::LiveRestore => 0x31,
+            Command::Identify => 0x3F,
+            Command::DefineEffect => 0x38,
+            Command::PlayEffect => 0x39,
+            Command::StopEffect => 0x3A,
+            Command::SetFramePeriod => 0x3B,
         }
+    }
+}
+
+/// What a keyboard running the live-lighting patch says about itself.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LiveInfo {
+    pub version: u8,
+    /// v2+: the engine's RAM self-test passed.
+    pub ram_ok: bool,
+    /// v2+: LED frames counted since power-on (for measuring the frame rate).
+    pub frames: u32,
+    /// v2+: the slot playing now, 0 for none.
+    pub active: u8,
+}
+
+impl LiveInfo {
+    const SIGNATURE: &[u8] = b"AKLIVE";
+
+    /// Parses the payload of an [`Command::Identify`] reply. `None` means
+    /// stock firmware, which echoes the request without a signature.
+    pub fn parse(payload: &[u8]) -> Option<Self> {
+        let sig = payload.get(..Self::SIGNATURE.len())?;
+        if sig != Self::SIGNATURE {
+            return None;
+        }
+        let version = *payload.get(6)?;
+        let byte = |i: usize| payload.get(i).copied().unwrap_or(0);
+        Some(Self {
+            version,
+            ram_ok: version >= 2 && byte(7) == 1,
+            frames: u32::from_le_bytes([byte(8), byte(9), byte(10), byte(11)]),
+            active: byte(12),
+        })
+    }
+
+    /// Whether the effect engine (`0x38`–`0x3B`) is available.
+    pub fn has_effects(&self) -> bool {
+        self.version >= 2 && self.ram_ok
+    }
+}
+
+/// Effect patterns, as in `docs/effects-format.md`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Pattern {
+    Solid = 0,
+    Pulse = 1,
+    Wave = 2,
+    Flicker = 3,
+    Sparkle = 4,
+}
+
+impl Pattern {
+    pub fn parse(name: &str) -> Option<Self> {
+        Some(match name {
+            "solid" => Pattern::Solid,
+            "pulse" => Pattern::Pulse,
+            "wave" => Pattern::Wave,
+            "flicker" => Pattern::Flicker,
+            "sparkle" => Pattern::Sparkle,
+            _ => return None,
+        })
+    }
+}
+
+/// One effect for the keyboard's engine. Build with [`EffectDef::new`],
+/// which applies the same limits as the firmware.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EffectDef {
+    slot: u8,
+    pattern: Pattern,
+    speed: u8,
+    brightness: u8,
+    colors: Vec<[u8; 3]>,
+    duration_ms: u32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EffectError {
+    Slot,
+    Speed,
+    Brightness,
+    Colors,
+    Duration,
+}
+
+impl EffectDef {
+    pub const SLOTS: std::ops::RangeInclusive<u8> = 1..=8;
+
+    pub fn new(
+        slot: u8,
+        pattern: Pattern,
+        speed: u8,
+        brightness: u8,
+        colors: &[[u8; 3]],
+        duration_ms: u32,
+    ) -> Result<Self, EffectError> {
+        if !Self::SLOTS.contains(&slot) {
+            return Err(EffectError::Slot);
+        }
+        if !(1..=10).contains(&speed) {
+            return Err(EffectError::Speed);
+        }
+        if !(1..=100).contains(&brightness) {
+            return Err(EffectError::Brightness);
+        }
+        if colors.is_empty() || colors.len() > 4 {
+            return Err(EffectError::Colors);
+        }
+        if duration_ms > 60_000 {
+            return Err(EffectError::Duration);
+        }
+        Ok(Self {
+            slot,
+            pattern,
+            speed,
+            brightness,
+            colors: colors.to_vec(),
+            duration_ms,
+        })
+    }
+
+    pub fn slot(&self) -> u8 {
+        self.slot
+    }
+
+    /// The 19-byte payload of [`Command::DefineEffect`].
+    pub fn payload(&self) -> [u8; 19] {
+        let mut p = [0u8; 19];
+        p[0] = self.slot;
+        p[1] = self.pattern as u8;
+        p[2] = self.speed;
+        p[3] = self.brightness;
+        p[4] = self.colors.len() as u8;
+        for (i, c) in self.colors.iter().enumerate() {
+            p[5 + i * 3..8 + i * 3].copy_from_slice(c);
+        }
+        let tens = (self.duration_ms.div_ceil(10)).min(u16::MAX as u32) as u16;
+        p[17..19].copy_from_slice(&tens.to_le_bytes());
+        p
+    }
+
+    pub fn define_request(&self) -> Vec<[u8; FRAME_LEN]> {
+        frames(Command::DefineEffect, &self.payload())
+    }
+}
+
+pub fn play_request(slot: u8) -> Vec<[u8; FRAME_LEN]> {
+    frames(Command::PlayEffect, &[slot])
+}
+
+pub fn stop_request() -> Vec<[u8; FRAME_LEN]> {
+    frames(Command::StopEffect, &[])
+}
+
+pub fn frame_period_request(micros: u32) -> Vec<[u8; FRAME_LEN]> {
+    frames(Command::SetFramePeriod, &micros.to_le_bytes())
+}
+
+/// Status the patched firmware puts in the last payload byte of a
+/// [`Command::LiveLed`] reply.
+pub const LIVE_STATUS_INDEX: usize = 15;
+
+/// One of the read commands `0x11`–`0x18`, each copying out one stored
+/// settings page (512 bytes) without changing anything. `0x10` and `0x13`
+/// are left out: `0x10` has a one-time side effect after a firmware flash,
+/// and `0x13` is built from RAM rather than read from flash. The field is
+/// private, so no other code can be smuggled in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ReadBlock(u8);
+
+impl ReadBlock {
+    /// Bytes in each stored block.
+    pub const LEN: usize = 512;
+    /// Every block that can be read this way.
+    pub const ALL: [ReadBlock; 7] = [
+        ReadBlock(0x11),
+        ReadBlock(0x12),
+        ReadBlock(0x14),
+        ReadBlock(0x15),
+        ReadBlock(0x16),
+        ReadBlock(0x17),
+        ReadBlock(0x18),
+    ];
+
+    pub fn new(code: u8) -> Option<Self> {
+        Self::ALL.into_iter().find(|b| b.0 == code)
     }
 }
 
@@ -276,6 +490,12 @@ impl LedState {
     pub fn write_request(&self) -> Vec<[u8; FRAME_LEN]> {
         frames(Command::WriteLed, &self.raw)
     }
+
+    /// The frame that shows this state without storing it (patched firmware
+    /// only; check with [`Command::Identify`] first).
+    pub fn live_request(&self) -> Vec<[u8; FRAME_LEN]> {
+        frames(Command::LiveLed, &self.raw)
+    }
 }
 
 /// Command of the live per-key colour stream on 32-byte receivers. The
@@ -469,6 +689,94 @@ mod tests {
     fn only_the_three_safe_commands_exist() {
         let codes = [Command::ReadInfo, Command::ReadLed, Command::WriteLed].map(Command::code);
         assert_eq!(codes, [0x10, 0x13, 0x23]);
+    }
+
+    #[test]
+    fn live_commands_match_the_patch() {
+        let codes = [Command::LiveLed, Command::LiveRestore, Command::Identify].map(Command::code);
+        assert_eq!(codes, [0x30, 0x31, 0x3F]);
+        let frames = sample().live_request();
+        assert_eq!(frames.len(), 1);
+        assert_eq!(frames[0][..8], [0xAA, 0x30, 0x18, 0, 0, 0, 1, 0]);
+        assert_eq!(frames[0][8..24], *sample().raw());
+    }
+
+    #[test]
+    fn effects_encode_like_the_firmware_expects() {
+        let fire = EffectDef::new(
+            1,
+            Pattern::Flicker,
+            6,
+            100,
+            &[[0xFF, 0x20, 0], [0xFF, 0x70, 0], [0xFF, 0xC0, 0x40]],
+            500,
+        )
+        .unwrap();
+        // Same bytes the emulator test fed the patched firmware, plus 500 ms.
+        assert_eq!(
+            fire.payload(),
+            [
+                1, 3, 6, 100, 3, 0xFF, 0x20, 0, 0xFF, 0x70, 0, 0xFF, 0xC0, 0x40, 0, 0, 0, 50, 0
+            ]
+        );
+        let frames = fire.define_request();
+        assert_eq!(frames.len(), 1);
+        assert_eq!(frames[0][..2], [0xAA, 0x38]);
+        assert_eq!(
+            play_request(3)[0][..9],
+            [0xAA, 0x39, 0x18, 0, 0, 0, 1, 0, 3]
+        );
+        assert_eq!(stop_request()[0][1], 0x3A);
+        assert_eq!(
+            frame_period_request(16_000)[0][8..12],
+            16_000u32.to_le_bytes()
+        );
+        assert_eq!(
+            EffectDef::new(9, Pattern::Solid, 5, 50, &[[0; 3]], 0),
+            Err(EffectError::Slot)
+        );
+        assert_eq!(
+            EffectDef::new(1, Pattern::Solid, 5, 50, &[], 0),
+            Err(EffectError::Colors)
+        );
+        assert_eq!(Pattern::parse("sparkle"), Some(Pattern::Sparkle));
+    }
+
+    #[test]
+    fn identify_reads_v2_engine_info() {
+        let mut p = [0u8; 24];
+        p[..8].copy_from_slice(b"AKLIVE\x02\x01");
+        p[8..12].copy_from_slice(&103u32.to_le_bytes());
+        p[12] = 2;
+        let info = LiveInfo::parse(&p).unwrap();
+        assert_eq!(
+            (info.version, info.ram_ok, info.frames, info.active),
+            (2, true, 103, 2)
+        );
+        assert!(info.has_effects());
+    }
+
+    #[test]
+    fn identify_tells_patched_from_stock() {
+        let mut patched = [0u8; 24];
+        patched[..7].copy_from_slice(b"AKLIVE\x01");
+        let v1 = LiveInfo::parse(&patched).unwrap();
+        assert_eq!(v1.version, 1);
+        assert!(!v1.has_effects());
+        assert_eq!(LiveInfo::parse(&[0u8; 24]), None);
+        assert_eq!(LiveInfo::parse(b"AKL"), None);
+    }
+
+    #[test]
+    fn block_reads_are_limited_to_plain_reads() {
+        for code in 0..=0xFF_u8 {
+            let allowed = matches!(code, 0x11 | 0x12 | 0x14..=0x18);
+            assert_eq!(ReadBlock::new(code).is_some(), allowed, "code {code:#04x}");
+        }
+        let block = ReadBlock::new(0x14).unwrap();
+        let frames = read_request(Command::ReadBlock(block), ReadBlock::LEN);
+        assert_eq!(frames.len(), 22);
+        assert_eq!(frames[21][..8], [0xAA, 0x14, 8, 0xF8, 0x01, 0, 1, 0]);
     }
 
     #[test]

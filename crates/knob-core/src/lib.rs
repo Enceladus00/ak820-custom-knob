@@ -22,7 +22,8 @@ pub mod router;
 pub mod signal;
 
 pub use config::{
-    Action, Config, ConfigError, LightingLayout, Mode, MouseButton, Profile, Theme, UiPrefs,
+    Action, Config, ConfigError, Effect, LightingLayout, Mode, MouseButton, Profile, Situation,
+    Theme, UiPrefs, effect_for,
 };
 pub use engine::{Engine, Output};
 pub use gesture::{Gesture, GestureKind, accel_factor};

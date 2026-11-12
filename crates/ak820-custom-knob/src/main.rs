@@ -13,6 +13,7 @@
 
 mod actions;
 mod config_file;
+mod effects;
 mod engine_thread;
 mod extras;
 mod hint_overlay;
@@ -76,6 +77,7 @@ fn main() {
     }
 
     extras::start(config.clone());
+    effects::start(config.clone());
     let engine = engine_thread::start(config);
     let _ = ENGINE.set(engine.clone());
 
@@ -84,6 +86,7 @@ fn main() {
             log::info!("config reloaded");
             i18n::set_language(&config.ui.language);
             extras::send(extras::ExtrasMsg::Config(Box::new(config.clone())));
+            effects::send(effects::EffectsMsg::Config(Box::new(config.clone())));
             let _ = engine.send(EngineMsg::Config(Box::new(config)));
             ui::notify(UiEvent::LanguageChanged);
             ui::notify(UiEvent::Osd(tr(Text::OsdReloaded).into()));
@@ -132,14 +135,16 @@ fn main() {
 fn forward_input(event: InputEvent) {
     if let InputEvent::KeyboardPresent(_) = event {
         ui::notify(ui::UiEvent::KeyboardChanged);
+        effects::send(effects::EffectsMsg::KeyboardChanged);
         return;
     }
     if let InputEvent::Extra(event) = event {
         extras::send(extras::ExtrasMsg::Router(event));
         return;
     }
-    if matches!(event, InputEvent::Foreground { .. }) {
+    if let InputEvent::Foreground { exe, .. } = &event {
         extras::send(extras::ExtrasMsg::Foreground);
+        effects::send(effects::EffectsMsg::Foreground(exe.clone()));
     }
     let delivered = ENGINE
         .get()

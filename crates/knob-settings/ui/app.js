@@ -21,6 +21,7 @@ const PAGES = [
   { id: 'macros', icon: 'macro' },
   { id: 'controls', icon: 'pointer' },
   { id: 'lighting', icon: 'light' },
+  { id: 'effects', icon: 'spark' },
   { id: 'general', icon: 'gear' },
 ];
 
@@ -110,6 +111,7 @@ const ICONS = {
   macro: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M7 10h.01M11 10h.01M15 10h.01M8 14h8"/></svg>',
   pointer: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3l6.5 17 2.4-6.9L21 10.7 5 3Z"/></svg>',
   remap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="8" width="7" height="8" rx="1.5"/><rect x="15" y="8" width="7" height="8" rx="1.5"/><path d="M10.5 12h3.5M12.5 10l2 2-2 2"/></svg>',
+  spark: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3.5 11.6 8.4 16.5 10 11.6 11.6 10 16.5 8.4 11.6 3.5 10 8.4 8.4Z"/><path d="M18 14v6M15 17h6"/></svg>',
   plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
 };
 
@@ -125,6 +127,7 @@ const state = {
   modeIndex: 0,
   layer: '',
   layoutIndex: 0,
+  effectIndex: 0,
   macroIndex: 0,
   recording: null, // { macro, last } while a macro is being recorded
   applying: false,
@@ -171,6 +174,7 @@ function fromRust(raw) {
   }
   for (const r of config.remaps) r.apps ??= [];
   for (const m of config.macros) m.apps ??= [];
+  for (const e of config.effects ?? []) e.when ??= [];
   return config;
 }
 
@@ -233,7 +237,7 @@ function render() {
 
   const main = $('#main');
   const scroll = main.scrollTop;
-  const pages = { modes: modesPage, apps: appsPage, remap: remapPage, macros: macrosPage, controls: controlsPage, lighting: lightingPage, general: generalPage };
+  const pages = { modes: modesPage, apps: appsPage, remap: remapPage, macros: macrosPage, controls: controlsPage, lighting: lightingPage, effects: effectsPage, general: generalPage };
   main.innerHTML = pages[state.page]();
   main.scrollTop = scroll;
   renderPicker();
@@ -618,6 +622,336 @@ async function applyLayout() {
   }
   state.applying = false;
   render();
+}
+
+// ---------- effects page
+//
+// Effects for the patched (LIVE v2) keyboard firmware. The shape, the checks
+// and the pattern formulas are in docs/effects-format.md; the checks run on
+// the Rust side like the rest of the config. The preview draws the formulas
+// in the browser. Nothing here talks to the keyboard yet.
+
+const PATTERNS = ['solid', 'pulse', 'wave', 'flicker', 'sparkle'];
+const EFFECT_SLOTS = 8;
+const EFFECT_MAX_COLORS = 4;
+
+// knob_rgb::KEYS (crates/knob-rgb/src/lib.rs): name, row, column.
+const KEYBOARD_KEYS = [
+  ['Esc', 0, 0], ['F1', 0, 1], ['F2', 0, 2], ['F3', 0, 3], ['F4', 0, 4],
+  ['F5', 0, 5], ['F6', 0, 6], ['F7', 0, 7], ['F8', 0, 8], ['F9', 0, 9],
+  ['F10', 0, 10], ['F11', 0, 11], ['F12', 0, 12], ['Delete', 0, 13],
+  ['`', 1, 0], ['1', 1, 1], ['2', 1, 2], ['3', 1, 3], ['4', 1, 4],
+  ['5', 1, 5], ['6', 1, 6], ['7', 1, 7], ['8', 1, 8], ['9', 1, 9],
+  ['0', 1, 10], ['-', 1, 11], ['=', 1, 12], ['Backspace', 1, 13], ['Home', 1, 14],
+  ['Tab', 2, 0], ['Q', 2, 1], ['W', 2, 2], ['E', 2, 3], ['R', 2, 4],
+  ['T', 2, 5], ['Y', 2, 6], ['U', 2, 7], ['I', 2, 8], ['O', 2, 9],
+  ['P', 2, 10], ['[', 2, 11], [']', 2, 12], ['\\', 2, 13], ['PgUp', 2, 14],
+  ['Caps', 3, 0], ['A', 3, 1], ['S', 3, 2], ['D', 3, 3], ['F', 3, 4],
+  ['G', 3, 5], ['H', 3, 6], ['J', 3, 7], ['K', 3, 8], ['L', 3, 9],
+  [';', 3, 10], ["'", 3, 11], ['Enter', 3, 13], ['PgDn', 3, 14],
+  ['LShift', 4, 0], ['Z', 4, 1], ['X', 4, 2], ['C', 4, 3], ['V', 4, 4],
+  ['B', 4, 5], ['N', 4, 6], ['M', 4, 7], [',', 4, 8], ['.', 4, 9],
+  ['/', 4, 10], ['RShift', 4, 11], ['Up', 4, 13], ['End', 4, 14],
+  ['LCtrl', 5, 0], ['Win', 5, 1], ['LAlt', 5, 2], ['Space', 5, 5],
+  ['RAlt', 5, 9], ['Fn', 5, 10], ['RCtrl', 5, 11], ['Left', 5, 12],
+  ['Down', 5, 13], ['Right', 5, 14],
+];
+const KEY_COLUMNS = 15;
+const KEY_ROWS = 6;
+// Only for drawing: where a few wide keys start and how many columns they
+// cover. Their colour still comes from their own column.
+const WIDE_KEYS = { Space: [3, 6], Enter: [12, 2], RShift: [11, 2] };
+
+const currentEffect = () => state.config.effects[state.effectIndex];
+
+function effectSwatch(effect) {
+  const colors = effect.colors.length ? effect.colors : ['#000000'];
+  const paint = colors.length === 1 ? esc(colors[0]) : `linear-gradient(135deg, ${colors.map(esc).join(', ')})`;
+  return `<span class="swatch" style="background:${paint}"></span>`;
+}
+
+function freeEffectSlot(except) {
+  const used = new Set(state.config.effects.filter((e) => e !== except).map((e) => e.slot));
+  for (let slot = 1; slot <= EFFECT_SLOTS; slot++) if (!used.has(slot)) return slot;
+  return null;
+}
+
+function uniqueEffectName(base) {
+  const names = new Set(state.config.effects.map((e) => e.name.trim().toLowerCase()));
+  if (!names.has(base.trim().toLowerCase())) return base;
+  for (let n = 2; ; n++) {
+    const name = `${base} ${n}`;
+    if (!names.has(name.toLowerCase())) return name;
+  }
+}
+
+function effectsPage() {
+  const effects = state.config.effects;
+  state.effectIndex = Math.min(state.effectIndex, Math.max(0, effects.length - 1));
+  const list = effects.map((e, i) => `
+    <button class="mode-item ${i === state.effectIndex ? 'active' : ''}" data-cmd="select-effect" data-index="${i}">
+      <span class="mode-name">${effectSwatch(e)}${esc(e.name) || t('modes.unnamed')}</span>
+      <span class="mode-meta">${t('effects.slotN', { slot: e.slot })} · ${PATTERNS.includes(e.pattern) ? t(`effects.patterns.${e.pattern}`) : esc(e.pattern)}</span>
+    </button>`).join('');
+  const full = effects.length >= EFFECT_SLOTS;
+  const effect = currentEffect();
+  if (!effectPreview.running) {
+    effectPreview.running = true;
+    requestAnimationFrame(drawEffectPreview);
+  }
+  return `<div class="modes">
+    <div class="mode-list">
+      ${list}
+      <button class="btn ghost" data-cmd="add-effect" ${full ? 'disabled' : ''}>${icon('plus')} ${t('effects.newEffect')}</button>
+      ${full ? `<small class="hint">${t('effects.slotsFull')}</small>` : ''}
+    </div>
+    ${effect ? effectEditor(effect, state.effectIndex, full) : `<div class="card muted">${t('effects.empty')}</div>`}
+  </div>`;
+}
+
+const effectRange = (i, key, min, max, value) => `<div class="range-field">
+  <div><strong>${t(`effects.${key}`)}</strong><small>${t(`effects.${key}Hint`)}</small></div>
+  <input type="range" min="${min}" max="${max}" step="1" value="${esc(value)}" data-bind="effects.${i}.${key}" data-type="int" data-plain="1" aria-label="${esc(tPlain(`effects.${key}`))}">
+  <output>${esc(value)}</output>
+</div>`;
+
+function effectEditor(effect, i, full) {
+  const taken = new Map(state.config.effects.filter((e) => e !== effect).map((e) => [e.slot, e.name]));
+  const slots = Array.from({ length: EFFECT_SLOTS }, (_, n) => n + 1).map((slot) => {
+    const label = taken.has(slot) ? t('effects.slotTaken', { slot, name: taken.get(slot) }) : t('effects.slotN', { slot });
+    return `<option value="${slot}" ${slot === effect.slot ? 'selected' : ''}>${label}</option>`;
+  }).join('');
+  const patterns = PATTERNS.map((p) => `<option value="${p}" ${p === effect.pattern ? 'selected' : ''}>${t(`effects.patterns.${p}`)}</option>`).join('');
+  const colors = effect.colors.map((c, j) => `<span class="effect-color">
+      <input type="color" data-bind="effects.${i}.colors.${j}" value="${esc(String(c).toLowerCase())}" aria-label="${esc(tPlain('effects.colorN', { n: j + 1 }))}">
+      ${effect.colors.length > 1 ? `<button class="icon-btn" data-cmd="effect-color-remove" data-index="${j}" title="${esc(tPlain('effects.removeColor'))}" aria-label="${esc(tPlain('effects.removeColor'))}">×</button>` : ''}
+    </span>`).join('');
+  const patternHint = PATTERNS.includes(effect.pattern) ? t(`effects.patternHints.${effect.pattern}`) : '';
+  return `<section class="card editor">
+    <div class="editor-head">
+      <label class="field grow"><span>${t('effects.name')}</span>
+        <input type="text" data-bind="effects.${i}.name" value="${esc(effect.name)}" maxlength="40" spellcheck="false">
+      </label>
+      <div class="head-actions">
+        <button class="btn" data-cmd="duplicate-effect" ${full ? 'disabled' : ''}>${t('buttons.duplicate')}</button>
+        <button class="btn danger" data-cmd="delete-effect">${t('buttons.delete')}</button>
+      </div>
+    </div>
+    <div class="effect-preview">
+      <canvas id="effect-preview" aria-label="${esc(tPlain('effects.preview'))}"></canvas>
+      <div class="effect-preview-foot">
+        <small class="hint">${t('effects.previewHint')}</small>
+        <button class="btn small" data-cmd="effect-restart">${t('effects.restart')}</button>
+      </div>
+    </div>
+    <div class="setting-row">
+      <div><strong>${t('effects.slot')}</strong><small>${t('effects.slotHint')}</small></div>
+      <select data-cmd="effect-slot" aria-label="${esc(tPlain('effects.slot'))}">${slots}</select>
+    </div>
+    <div class="setting-row">
+      <div><strong>${t('effects.pattern')}</strong><small>${patternHint}</small></div>
+      <select data-cmd="effect-pattern" aria-label="${esc(tPlain('effects.pattern'))}">${patterns}</select>
+    </div>
+    <div class="setting-row">
+      <div><strong>${t('effects.colors')}</strong><small>${t('effects.colorsHint')}</small></div>
+      <div class="color-controls">
+        ${colors}
+        ${effect.colors.length < EFFECT_MAX_COLORS ? `<button class="btn small" data-cmd="effect-color-add">${icon('plus')} ${t('effects.addColor')}</button>` : ''}
+      </div>
+    </div>
+    ${effectRange(i, 'speed', 1, 10, effect.speed)}
+    ${effectRange(i, 'brightness', 1, 100, effect.brightness)}
+    <div class="setting-row">
+      <div><strong>${t('effects.duration')}</strong><small>${t('effects.durationHint')}</small></div>
+      ${numberParam(`effects.${i}.duration_ms`, effect.duration_ms, 0, 60000, t('effects.ms'))}
+    </div>
+    <div class="setting-row effect-when">
+      <div><strong>${t('effects.when')}</strong><small>${t('effects.whenHint')}</small></div>
+      <div class="when-list">
+        ${(effect.when ?? []).map((w, j) => `
+          <span class="chip">${esc(situationLabel(w))}
+            <button class="icon-btn" data-cmd="effect-when-remove" data-index="${j}" title="${esc(tPlain('effects.whenRemove'))}" aria-label="${esc(tPlain('effects.whenRemove'))}">×</button>
+          </span>`).join('') || `<small class="hint">${t('effects.whenNone')}</small>`}
+        <div class="when-add">
+          <button class="btn small" data-cmd="effect-when-app">${icon('plus')} ${t('effects.whenApp')}</button>
+          <select data-cmd="effect-when-mode" aria-label="${esc(tPlain('effects.whenMode'))}">
+            <option value="">${t('effects.whenMode')}</option>
+            ${state.config.modes.map((m) => `<option value="${esc(m.name)}">${esc(m.name)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="apply-row">
+      <button class="btn primary" data-cmd="effect-play" ${state.effectBusy ? 'disabled' : ''}>${t('effects.play')}</button>
+      <button class="btn" data-cmd="effect-stop" ${state.effectBusy ? 'disabled' : ''}>${t('effects.stop')}</button>
+      <small class="hint">${firmwareLine()}</small>
+    </div>
+  </section>`;
+}
+
+/** "app:valheim.exe" → "App: valheim.exe"; "mode:Volume" → "Mode: Volume". */
+function situationLabel(when) {
+  const [kind, ...rest] = String(when).split(':');
+  const value = rest.join(':').trim();
+  if (kind === 'app') return tPlain('effects.whenAppLabel', { app: value });
+  if (kind === 'mode') return tPlain('effects.whenModeLabel', { mode: value });
+  return when;
+}
+
+/** One line about the keyboard's firmware; asks it once per visit. */
+function firmwareLine() {
+  const fw = state.effectFw;
+  if (fw === undefined) {
+    state.effectFw = null;
+    invoke('effect_firmware')
+      .then((r) => { state.effectFw = r; })
+      .catch(() => { state.effectFw = { kind: 'unknown', error: 'other' }; })
+      .finally(() => { if (state.page === 'effects') render(); });
+  }
+  if (!fw) return t('effects.fw.checking');
+  if (fw.kind === 'live' && fw.effects) return t('effects.fw.ready', { version: fw.version });
+  if (fw.kind === 'live') return t('effects.fw.old', { version: fw.version });
+  if (fw.kind === 'stock') return t('effects.fw.stock');
+  return t('effects.fw.unknown');
+}
+
+async function effectCommand(command, args, done) {
+  if (state.effectBusy) return;
+  state.effectBusy = true;
+  render();
+  try {
+    await invoke(command, args);
+    if (done) toast(done);
+  } catch (e) {
+    const known = ['no_keyboard', 'no_reply', 'no_engine'].includes(e);
+    toast(known ? tPlain(`effects.errors.${e}`) : tPlain('effects.errors.other', { error: e }), true);
+    state.effectFw = undefined; // ask again: it may have been asleep or reflashed
+  }
+  state.effectBusy = false;
+  render();
+}
+
+// ---- preview: the formulas from docs/effects-format.md
+
+// One animation loop at a time; it stops by itself when the page is left.
+const effectPreview = { running: false, index: -1, start: 0 };
+
+function hexRgb(hex) {
+  const m = /^#([0-9a-f]{6})$/i.exec(String(hex));
+  if (!m) return [0, 0, 0];
+  const n = parseInt(m[1], 16);
+  return [n >> 16, (n >> 8) & 255, n & 255];
+}
+
+const mix = (a, b, f) => [0, 1, 2].map((k) => a[k] + (b[k] - a[k]) * f);
+const frac = (x) => x - Math.floor(x);
+
+/** Blends the colours evenly over u in 0..1; `loop` joins the last back to the first. */
+function palette(colors, u, loop = false) {
+  if (colors.length === 1) return colors[0];
+  const segments = loop ? colors.length : colors.length - 1;
+  const pos = Math.min(Math.max(u, 0), loop ? 0.999999 : 1) * segments;
+  const i = Math.min(Math.floor(pos), segments - 1);
+  return mix(colors[i], colors[(i + 1) % colors.length], pos - i);
+}
+
+/** Repeatable 0..1 noise for a key and a step number. */
+function noise(key, step, salt = 0) {
+  let h = (key * 374761393 + step * 668265263 + salt * 2246822519) >>> 0;
+  h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+/** The colour of one key `t` ms after the effect started. */
+function effectKeyColor(effect, colors, key, x, t) {
+  const P = 4000 / Math.min(Math.max(effect.speed || 1, 1), 10);
+  switch (effect.pattern) {
+    case 'pulse': {
+      const f = (1 - Math.cos((2 * Math.PI * t) / P)) / 2;
+      return mix(colors[1] ?? [0, 0, 0], colors[0], f);
+    }
+    case 'wave':
+      return palette(colors, frac(x - t / P), true);
+    case 'flicker': {
+      const roll = P / 8;
+      const step = Math.floor(t / roll);
+      const s = (t - step * roll) / roll;
+      const smooth = s * s * (3 - 2 * s);
+      const v = noise(key, step) + (noise(key, step + 1) - noise(key, step)) * smooth;
+      return palette(colors, v).map((c) => c * (0.55 + 0.45 * v));
+    }
+    case 'sparkle': {
+      const q = P / 4;
+      const chance = (effect.speed * 2) / 100;
+      const flashes = colors.length > 1 ? colors.slice(1) : [[255, 255, 255]];
+      let color = colors[0];
+      const now = Math.floor(t / q);
+      for (const n of [now - 1, now]) {
+        if (n < 0 || noise(key, n, 1) >= chance) continue;
+        const age = t - (n + noise(key, n, 2)) * q;
+        if (age < 0 || age >= q) continue;
+        const flash = flashes[Math.floor(noise(key, n, 3) * flashes.length)];
+        color = mix(color, flash, 1 - age / q);
+      }
+      return color;
+    }
+    default:
+      return colors[0];
+  }
+}
+
+function drawEffectPreview(now) {
+  const canvas = document.getElementById('effect-preview');
+  const effect = state.page === 'effects' ? currentEffect() : null;
+  if (!canvas || !effect) {
+    effectPreview.running = false; // effectsPage() starts it again
+    return;
+  }
+  if (effectPreview.index !== state.effectIndex) {
+    effectPreview.index = state.effectIndex;
+    effectPreview.start = now;
+  }
+  const ratio = window.devicePixelRatio || 1;
+  const width = Math.round(canvas.clientWidth * ratio);
+  const height = Math.round(canvas.clientHeight * ratio);
+  if (canvas.width !== width || canvas.height !== height) {
+    canvas.width = width;
+    canvas.height = height;
+  }
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#121418';
+  ctx.fillRect(0, 0, width, height);
+
+  // With a duration the effect ends by itself; the preview shows the keys
+  // dark for a moment, then plays it again.
+  let t = now - effectPreview.start;
+  const duration = effect.duration_ms || 0;
+  if (duration > 0 && t > duration + 1200) {
+    effectPreview.start = now;
+    t = 0;
+  }
+  const over = duration > 0 && t > duration;
+  const colors = effect.colors.length ? effect.colors.map(hexRgb) : [[0, 0, 0]];
+  const scale = Math.min(Math.max(effect.brightness || 0, 0), 100) / 100;
+  const pad = 10 * ratio;
+  const unit = Math.min((width - 2 * pad) / KEY_COLUMNS, (height - 2 * pad) / KEY_ROWS);
+  const left = (width - unit * KEY_COLUMNS) / 2;
+  const top = (height - unit * KEY_ROWS) / 2;
+  const gap = Math.max(2, unit * 0.1);
+  KEYBOARD_KEYS.forEach(([name, row, col], key) => {
+    const [startCol, span] = WIDE_KEYS[name] ?? [col, 1];
+    const rgb = over ? [38, 41, 48] : effectKeyColor(effect, colors, key, col / (KEY_COLUMNS - 1), t).map((c) => c * scale);
+    ctx.fillStyle = `rgb(${rgb.map((c) => Math.round(Math.min(Math.max(c, 0), 255))).join(',')})`;
+    const x = left + startCol * unit + gap / 2;
+    const y = top + row * unit + gap / 2;
+    const w = span * unit - gap;
+    const h = unit - gap;
+    ctx.beginPath();
+    if (ctx.roundRect) ctx.roundRect(x, y, w, h, unit * 0.12);
+    else ctx.rect(x, y, w, h);
+    ctx.fill();
+  });
+  requestAnimationFrame(drawEffectPreview);
 }
 
 // ---------- macros page
@@ -1016,8 +1350,21 @@ async function openPicker(index, list = 'profiles') {
   renderAppList();
 }
 
+function addSituation(effect, when) {
+  effect.when ??= [];
+  if (!effect.when.some((w) => w.toLowerCase() === when.toLowerCase())) effect.when.push(when);
+  changed();
+}
+
 function addApp(exe) {
   const name = exe.trim();
+  if (state.pickerFor === 'effects') {
+    const effect = state.config.effects[state.picker];
+    state.picker = null;
+    if (effect && name) addSituation(effect, `app:${name}`);
+    else changed();
+    return;
+  }
   const list = pickerList();
   if (!name || !list) return;
   if (!list.some((e) => e.toLowerCase() === name.toLowerCase())) list.push(name);
@@ -1212,6 +1559,59 @@ const commands = {
     changed();
   },
   'apply-layout': () => applyLayout(),
+  'select-effect': (el) => { state.effectIndex = Number(el.dataset.index); render(); },
+  'add-effect': () => {
+    const slot = freeEffectSlot();
+    if (slot == null) return;
+    const effects = state.config.effects;
+    effects.push({
+      name: uniqueEffectName(tPlain('effects.newName')),
+      slot, pattern: 'solid', colors: ['#66CCFF'], speed: 5, brightness: 100, duration_ms: 0,
+    });
+    state.effectIndex = effects.length - 1;
+    changed();
+    const input = document.querySelector('.editor-head input');
+    input?.focus();
+    input?.select();
+  },
+  'duplicate-effect': () => {
+    const slot = freeEffectSlot();
+    if (slot == null) return;
+    const copy = clone(currentEffect());
+    copy.name = uniqueEffectName(tPlain('modes.copyName', { name: copy.name }));
+    copy.slot = slot;
+    state.config.effects.splice(state.effectIndex + 1, 0, copy);
+    state.effectIndex += 1;
+    changed();
+  },
+  'delete-effect': () => {
+    if (!confirm(tPlain('effects.confirmDelete', { name: currentEffect().name }))) return;
+    state.config.effects.splice(state.effectIndex, 1);
+    changed();
+  },
+  'effect-color-add': () => {
+    const colors = currentEffect().colors;
+    if (colors.length < EFFECT_MAX_COLORS) colors.push(colors[colors.length - 1] ?? '#FFFFFF');
+    changed();
+  },
+  'effect-color-remove': (el) => {
+    const colors = currentEffect().colors;
+    if (colors.length > 1) colors.splice(Number(el.dataset.index), 1);
+    changed();
+  },
+  'effect-restart': () => { effectPreview.start = performance.now(); },
+  'effect-play': () => {
+    const effect = currentEffect();
+    if (effect) effectCommand('effect_play', { effect }, tPlain('effects.playing', { name: effect.name }));
+  },
+  'effect-stop': () => effectCommand('effect_stop', {}, tPlain('effects.stopped')),
+  'effect-when-app': () => openPicker(state.effectIndex, 'effects'),
+  'effect-when-remove': (el) => {
+    const effect = currentEffect();
+    if (!effect) return;
+    effect.when.splice(Number(el.dataset.index), 1);
+    changed();
+  },
 
   theme: (el) => { state.config.ui.theme = el.dataset.theme; changed(); },
   'start-daemon': async () => {
@@ -1274,6 +1674,13 @@ const changeCommands = {
     changed();
   },
   'layout-colorful': (el) => { currentLayout().colorful = el.checked; changed(); },
+  'effect-slot': (el) => { currentEffect().slot = Number(el.value); changed(); },
+  'effect-when-mode': (el) => {
+    const effect = currentEffect();
+    if (!effect || !el.value) return;
+    addSituation(effect, `mode:${el.value}`);
+  },
+  'effect-pattern': (el) => { currentEffect().pattern = el.value; changed(); },
   language: (el) => { state.config.ui.language = el.value; changed(); },
   // Applies at once, like the tray menu item; not part of Save.
   autostart: async (el) => {
@@ -1322,6 +1729,12 @@ document.addEventListener('input', (e) => {
       const layout = state.config.lighting[Number(index)];
       item.innerHTML = `${layoutSwatch(layout)}${esc(layout.name) || t('modes.unnamed')}`;
     }
+  }
+  const effectMatch = /^effects\.(\d+)\.(name|colors\.\d+)$/.exec(el.dataset.bind);
+  if (effectMatch) {
+    const item = document.querySelector(`.mode-item[data-index="${effectMatch[1]}"] .mode-name`);
+    const effect = state.config.effects[Number(effectMatch[1])];
+    if (item) item.innerHTML = `${effectSwatch(effect)}${esc(effect.name) || t('modes.unnamed')}`;
   }
   changed(false);
 });

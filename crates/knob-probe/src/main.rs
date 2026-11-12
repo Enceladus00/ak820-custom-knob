@@ -59,6 +59,22 @@ fn main() {
             rgb::bench(&dir, secs, &args[1..]);
             return;
         }
+        Some("rgb-identify") => {
+            rgb::identify(&dir, secs);
+            return;
+        }
+        Some("rgb-effect") => {
+            rgb::effect(&dir, secs, &args[1..]);
+            return;
+        }
+        Some("rgb-live") => {
+            rgb::live(&dir, secs, &args[1..]);
+            return;
+        }
+        Some("rgb-dump") => {
+            rgb::dump(&dir, secs);
+            return;
+        }
         Some("rgb-stream") => {
             rgb::stream(&dir, secs, &args[1..]);
             return;

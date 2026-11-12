@@ -215,6 +215,66 @@ reads back and compares. All output is saved in `probe-logs\`.
    --reads`), a `0x23` write 31 ms, so each write costs about 28 ms of work
    on the keyboard: consistent with a flash save on every write.
 
+## Firmware analysis (v1.36)
+
+On 2026-11-12 the firmware was read statically in Ghidra 12.2. The official
+`AK820MAX Ultra Upgrade.exe` from ajazzdriver.com is a rebranded Sonix ISP
+tool. It carries the image unencrypted as RCDATA resource 4000: 516,096 bytes
+for a Sonix **SN34F280** (Cortex-M3/M4 class). Its USB descriptor is
+`0C45:80A0`, bcdDevice `0x0136`, so it is exactly this keyboard's firmware.
+The updater was never run, and nothing was sent to the keyboard. The firmware
+image itself isn't in this repo.
+
+### Command dispatch
+
+Two near-identical handlers, one per transport (2.4 GHz at `0x0000ea90`,
+wired at `0x0000f940`), check for `AA` in byte 0. They then copy the frame
+into the reply, set byte 0 to `55`, and act on the high nibble of the command:
+
+| Group | Commands | What it does |
+|---|---|---|
+| `0x1X` | `10`–`18` | Read. Copies from a flash page into the reply (`13` is built from RAM). |
+| `0x2X` | `21`–`28` | Write the payload to a **fixed** flash page (see below). |
+| `0x6X` | `64`–`67` | Magnetic-switch calibration flags (RAM). `65` ends calibration and **writes** `0x8400`/`0x8500`. |
+| `0xXF` | sub-code 1, 2, 4, 5, `FF` | Resets: erase groups of settings pages; `FF` erases all of them. |
+| anything else | `3X`, `4X`, `5X`, … | **Not handled.** The frame is still echoed back as `55 cmd …`. |
+
+Read and write pages: `10` → `0x9000` (device info), `11`/`21` → `0x9200`,
+`12`/`22` → `0x9600`, `13`/`23` → `0x9800` (lighting block), `14`/`24` →
+`0x9A00` (per-key colours), `15`/`25` → `0x9C00`, `16`/`26` → `0xB000`,
+`17`/`27` → `0xB600`, `18`/`28` → `0xB200`.
+
+### What this settles
+
+* **Every write is a flash erase.** `FUN_00005cb8` copies the 512-byte
+  page to RAM, erases it, patches in the new bytes and programs it back.
+  The address is always the same: no wear levelling, and no "skip if
+  unchanged" check.
+* **A `0x23` costs two erase cycles.** After writing `0x9800`, the apply
+  routine (`FUN_00001984`) calls `FUN_00006418`, which unconditionally
+  rewrites a 16-byte settings record (marker `A5`) at `0x8200`. That fits
+  the ~28 ms of extra time per write.
+* **The firmware has no live or direct lighting mode.** The renderer reads
+  its state from RAM, but the only code that fills that RAM from the host
+  is the apply routine, which runs after the flash write. No command
+  changes colours in RAM only.
+* **Music mode doesn't exist in this firmware.** Neither handler has a
+  `0x3X` branch, so `0x32`/`0x35` frames are just echoed and dropped. That
+  is exactly what `rgb-stream` saw. It isn't a mode to be switched on.
+* **The keyboard's own Fn shortcuts write flash too.** The Fn handler
+  (`FUN_00003098`) calls the same `0x8200` writer on most lighting
+  shortcuts, so AJAZZ's firmware already erases a page on every Fn
+  brightness or effect press.
+* **"Off" reads back as Wave: a reporting quirk.** Apply maps effect
+  `0` to internal index 10 and `0x80` to `0x14`. A read reports
+  `index + 1` for indexes ≤ 10, so "off" comes back as `0x0B`, and
+  per-key custom as `0x14`.
+* `0x41`, `0x42` and `0x50` (images and screen in the web driver) have no
+  branch in either handler here. They stay on the never-send list anyway.
+
+Still unknown: the SN34F280's rated erase/write cycles (needs the
+datasheet), and the 2.4 GHz receiver's firmware, which isn't in the updater.
+
 ## Ideas this opens up
 
 * **Mode colour:** the keyboard shows which knob mode is active.

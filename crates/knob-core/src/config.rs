@@ -38,6 +38,11 @@ pub struct Config {
     /// built-in set.
     #[serde(rename = "lighting", default = "default_layouts")]
     pub layouts: Vec<LightingLayout>,
+    /// Lighting effects for the patched (LIVE v2) firmware, see
+    /// docs/effects-format.md. Files written before these existed get the
+    /// built-in set.
+    #[serde(rename = "effects", default = "default_effects")]
+    pub effects: Vec<Effect>,
     #[serde(rename = "macro", default, skip_serializing_if = "Vec::is_empty")]
     pub macros: Vec<MacroDef>,
     #[serde(default)]
@@ -50,6 +55,200 @@ pub struct Config {
 
 fn default_layouts() -> Vec<LightingLayout> {
     Config::default_config().layouts
+}
+
+fn default_effects() -> Vec<Effect> {
+    Config::default_config().effects
+}
+
+/// How an effect paints the keys. The formulas are in docs/effects-format.md.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Pattern {
+    Solid,
+    Pulse,
+    Wave,
+    Flicker,
+    Sparkle,
+}
+
+impl Pattern {
+    /// The pattern's number in the keyboard's define command.
+    pub fn code(self) -> u8 {
+        match self {
+            Pattern::Solid => 0,
+            Pattern::Pulse => 1,
+            Pattern::Wave => 2,
+            Pattern::Flicker => 3,
+            Pattern::Sparkle => 4,
+        }
+    }
+}
+
+pub const EFFECT_SLOTS: std::ops::RangeInclusive<u8> = 1..=8;
+pub const EFFECT_MAX_COLORS: usize = 4;
+pub const EFFECT_MAX_DURATION_MS: u32 = 60_000;
+
+/// A lighting effect the keyboard's effect engine plays from RAM.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Effect {
+    pub name: String,
+    /// 1 to 8: where it lives on the keyboard.
+    pub slot: u8,
+    pub pattern: Pattern,
+    /// 1 to 4 colours, `#RRGGBB`.
+    pub colors: Vec<String>,
+    /// 1 to 10.
+    pub speed: u8,
+    /// 1 to 100 percent.
+    pub brightness: u8,
+    /// 0 plays until stopped; otherwise it stops by itself (at most 60000).
+    #[serde(default)]
+    pub duration_ms: u32,
+    /// Situations in which the effect plays by itself, see [`Situation`].
+    /// Empty: only when started by hand.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub when: Vec<String>,
+}
+
+/// When an effect plays by itself, written as text in the config:
+/// `app:<program.exe>` while that program is in front, `mode:<name>` while
+/// that knob mode is active.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Situation {
+    App(String),
+    Mode(String),
+}
+
+impl Situation {
+    pub fn parse(text: &str) -> Option<Self> {
+        let (kind, value) = text.split_once(':')?;
+        let value = value.trim();
+        if value.is_empty() {
+            return None;
+        }
+        match kind.trim() {
+            "app" => Some(Situation::App(value.to_lowercase())),
+            "mode" => Some(Situation::Mode(value.to_lowercase())),
+            _ => None,
+        }
+    }
+
+    /// Whether this situation holds for the program in front (its exe name)
+    /// and the active knob mode (its id or name).
+    pub fn holds(&self, app: &str, mode_id: &str, mode_name: &str) -> bool {
+        match self {
+            Situation::App(exe) => app.eq_ignore_ascii_case(exe),
+            Situation::Mode(m) => {
+                mode_id.eq_ignore_ascii_case(m) || mode_name.eq_ignore_ascii_case(m)
+            }
+        }
+    }
+}
+
+/// The effect that should be playing now: the first one in the list with a
+/// situation that holds, so the list order is the priority.
+pub fn effect_for<'a>(
+    effects: &'a [Effect],
+    app: &str,
+    mode_id: &str,
+    mode_name: &str,
+) -> Option<&'a Effect> {
+    effects.iter().find(|e| {
+        e.when
+            .iter()
+            .filter_map(|w| Situation::parse(w))
+            .any(|s| s.holds(app, mode_id, mode_name))
+    })
+}
+
+impl Effect {
+    /// The keyboard command form of this effect, if it is valid.
+    pub fn to_def(&self) -> Option<knob_rgb::EffectDef> {
+        let pattern = match self.pattern {
+            Pattern::Solid => knob_rgb::Pattern::Solid,
+            Pattern::Pulse => knob_rgb::Pattern::Pulse,
+            Pattern::Wave => knob_rgb::Pattern::Wave,
+            Pattern::Flicker => knob_rgb::Pattern::Flicker,
+            Pattern::Sparkle => knob_rgb::Pattern::Sparkle,
+        };
+        let colors = self.rgb_colors()?;
+        knob_rgb::EffectDef::new(
+            self.slot,
+            pattern,
+            self.speed,
+            self.brightness,
+            &colors,
+            self.duration_ms,
+        )
+        .ok()
+    }
+
+    /// The colours as red, green, blue, if they are all well formed.
+    pub fn rgb_colors(&self) -> Option<Vec<[u8; 3]>> {
+        self.colors
+            .iter()
+            .map(|c| crate::hint_style::parse_color(c))
+            .collect()
+    }
+
+    /// Adds a message to `errors` for everything wrong with this effect on
+    /// its own. Unique names and slots are checked by [`check_effects`].
+    pub fn check(&self, errors: &mut Vec<String>) {
+        let ctx = format!("effect '{}'", self.name);
+        if self.name.trim().is_empty() {
+            errors.push("an effect has no name".into());
+        }
+        if !EFFECT_SLOTS.contains(&self.slot) {
+            errors.push(format!("{ctx}: slot must be 1 to 8"));
+        }
+        if !(1..=EFFECT_MAX_COLORS).contains(&self.colors.len()) {
+            errors.push(format!("{ctx}: needs 1 to 4 colours"));
+        }
+        if self
+            .colors
+            .iter()
+            .any(|c| crate::hint_style::parse_color(c).is_none())
+        {
+            errors.push(format!("{ctx}: colours must look like #FF2000"));
+        }
+        if !(1..=10).contains(&self.speed) {
+            errors.push(format!("{ctx}: speed must be 1 to 10"));
+        }
+        if !(1..=100).contains(&self.brightness) {
+            errors.push(format!("{ctx}: brightness must be 1 to 100"));
+        }
+        if self.duration_ms > EFFECT_MAX_DURATION_MS {
+            errors.push(format!("{ctx}: duration must be 0 to 60000 ms"));
+        }
+        for when in &self.when {
+            if Situation::parse(when).is_none() {
+                errors.push(format!(
+                    "{ctx}: '{when}' is not a situation (use app:<program.exe> or mode:<name>)"
+                ));
+            }
+        }
+    }
+}
+
+/// Checks every effect, and that no two share a name or a slot.
+pub fn check_effects(effects: &[Effect], errors: &mut Vec<String>) {
+    let mut names = HashSet::new();
+    let mut slots = HashSet::new();
+    for effect in effects {
+        effect.check(errors);
+        let name = effect.name.trim().to_lowercase();
+        if !name.is_empty() && !names.insert(name) {
+            errors.push(format!(
+                "effect name '{}' is used twice",
+                effect.name.trim()
+            ));
+        }
+        if EFFECT_SLOTS.contains(&effect.slot) && !slots.insert(effect.slot) {
+            errors.push(format!("effect slot {} is used twice", effect.slot));
+        }
+    }
 }
 
 /// A named lighting setup. It reaches the keyboard only when the user applies
@@ -588,6 +787,7 @@ impl Config {
         for layout in &self.layouts {
             layout.check(&mut errors);
         }
+        check_effects(&self.effects, &mut errors);
         self.check_extras(&mut errors);
         self.check_remaps(&mut errors);
         if errors.is_empty() {
@@ -833,6 +1033,271 @@ long_press = { action = "open", target = "https://example.com" }
         ] {
             assert_eq!(problems(&bad), 1, "{bad:?}");
         }
+    }
+
+    fn effect() -> Effect {
+        Effect {
+            name: "Test".into(),
+            slot: 1,
+            pattern: Pattern::Pulse,
+            colors: vec!["#FF2000".into(), "#200000".into()],
+            speed: 5,
+            brightness: 100,
+            duration_ms: 0,
+            when: vec![],
+        }
+    }
+
+    #[test]
+    fn situations_parse_and_match() {
+        assert_eq!(
+            Situation::parse("app:Valheim.exe"),
+            Some(Situation::App("valheim.exe".into()))
+        );
+        assert_eq!(
+            Situation::parse("mode: Volume "),
+            Some(Situation::Mode("volume".into()))
+        );
+        assert_eq!(Situation::parse("app:"), None);
+        assert_eq!(Situation::parse("weather:rain"), None);
+        assert_eq!(Situation::parse("valheim.exe"), None);
+        let s = Situation::parse("app:valheim.exe").unwrap();
+        assert!(s.holds("Valheim.EXE", "m1", "Volume"));
+        assert!(!s.holds("code.exe", "m1", "Volume"));
+        let m = Situation::parse("mode:volume").unwrap();
+        assert!(m.holds("x.exe", "m1", "Volume"));
+        assert!(
+            Situation::parse("mode:M1")
+                .unwrap()
+                .holds("x.exe", "m1", "Volume")
+        );
+    }
+
+    #[test]
+    fn the_first_matching_effect_wins() {
+        let fire = Effect {
+            name: "Fire".into(),
+            when: vec!["app:valheim.exe".into()],
+            ..effect()
+        };
+        let calm = Effect {
+            name: "Calm".into(),
+            slot: 2,
+            when: vec!["mode:scroll".into(), "app:valheim.exe".into()],
+            ..effect()
+        };
+        let manual = Effect {
+            name: "Manual".into(),
+            slot: 3,
+            ..effect()
+        };
+        let effects = [manual, fire, calm];
+        let pick = |app, mode| effect_for(&effects, app, "", mode).map(|e| e.name.as_str());
+        assert_eq!(pick("valheim.exe", "volume"), Some("Fire"));
+        assert_eq!(pick("code.exe", "Scroll"), Some("Calm"));
+        assert_eq!(pick("code.exe", "volume"), None);
+    }
+
+    #[test]
+    fn bad_situations_are_reported_and_good_ones_convert() {
+        let bad = Effect {
+            when: vec!["app:valheim.exe".into(), "sometimes".into()],
+            ..effect()
+        };
+        assert_eq!(effect_problems(&[bad]).len(), 1);
+        let def = effect().to_def().unwrap();
+        assert_eq!(def.slot(), 1);
+        assert_eq!(def.payload()[..5], [1, 1, 5, 100, 2]);
+    }
+
+    #[test]
+    fn situations_round_trip_and_are_omitted_when_empty() {
+        let mut config = Config::default_config();
+        config.effects[0].when = vec!["app:valheim.exe".into()];
+        let text = toml::to_string(&config).unwrap();
+        assert_eq!(text.matches("when = ").count(), 1);
+        assert_eq!(
+            Config::from_toml(&text).unwrap().effects[0].when,
+            ["app:valheim.exe"]
+        );
+    }
+
+    fn effect_problems(effects: &[Effect]) -> Vec<String> {
+        let mut errors = Vec::new();
+        check_effects(effects, &mut errors);
+        errors
+    }
+
+    #[test]
+    fn default_effects_match_the_format_doc() {
+        let effects = Config::default_config().effects;
+        let summary: Vec<_> = effects
+            .iter()
+            .map(|e| (e.name.as_str(), e.slot, e.pattern, e.colors.len(), e.speed))
+            .collect();
+        assert_eq!(
+            summary,
+            [
+                ("Fire", 1, Pattern::Flicker, 3, 6),
+                ("Frost", 2, Pattern::Wave, 3, 3),
+                ("Poison", 3, Pattern::Pulse, 2, 5),
+                ("Low health", 4, Pattern::Pulse, 2, 8),
+                ("Shock", 5, Pattern::Sparkle, 3, 9),
+            ]
+        );
+        assert_eq!(effects[0].rgb_colors().unwrap()[0], [0xFF, 0x20, 0x00]);
+    }
+
+    #[test]
+    fn older_files_get_the_built_in_effects() {
+        let start = DEFAULT_CONFIG
+            .find("# ---------------------------------------------------------------- effects")
+            .unwrap();
+        let len = DEFAULT_CONFIG[start..]
+            .find(
+                "# ---------------------------------------------------------------- key remapping",
+            )
+            .unwrap();
+        let old = format!(
+            "{}{}",
+            &DEFAULT_CONFIG[..start],
+            &DEFAULT_CONFIG[start + len..]
+        );
+        assert!(!old.contains("[[effects]]"));
+        let config = Config::from_toml(&old).unwrap();
+        assert_eq!(config.effects.len(), 5);
+        assert_eq!(config.effects, Config::default_config().effects);
+    }
+
+    #[test]
+    fn every_effect_can_be_deleted() {
+        let mut config = Config::default_config();
+        config.effects.clear();
+        let text = toml::to_string(&config).unwrap();
+        assert!(Config::from_toml(&text).unwrap().effects.is_empty());
+    }
+
+    #[test]
+    fn patterns_are_lowercase_and_unknown_ones_fail() {
+        let text = DEFAULT_CONFIG.replace(r#"pattern = "wave""#, r#"pattern = "Wave""#);
+        assert!(matches!(
+            Config::from_toml(&text),
+            Err(ConfigError::Parse(_))
+        ));
+        let codes = [
+            Pattern::Solid,
+            Pattern::Pulse,
+            Pattern::Wave,
+            Pattern::Flicker,
+            Pattern::Sparkle,
+        ]
+        .map(Pattern::code);
+        assert_eq!(codes, [0, 1, 2, 3, 4]);
+    }
+
+    #[test]
+    fn good_effects_have_no_problems() {
+        let edges = [
+            effect(),
+            Effect {
+                name: "One colour".into(),
+                slot: 8,
+                colors: vec!["#ffffff".into()],
+                speed: 10,
+                brightness: 1,
+                duration_ms: 60_000,
+                ..effect()
+            },
+            Effect {
+                name: "Four".into(),
+                slot: 2,
+                colors: vec!["#000000".into(); 4],
+                speed: 1,
+                ..effect()
+            },
+        ];
+        assert_eq!(effect_problems(&edges), Vec::<String>::new());
+    }
+
+    #[test]
+    fn bad_effects_are_reported() {
+        for bad in [
+            Effect {
+                name: " ".into(),
+                ..effect()
+            },
+            Effect {
+                slot: 0,
+                ..effect()
+            },
+            Effect {
+                slot: 9,
+                ..effect()
+            },
+            Effect {
+                colors: vec![],
+                ..effect()
+            },
+            Effect {
+                colors: vec!["#FFFFFF".into(); 5],
+                ..effect()
+            },
+            Effect {
+                colors: vec!["#FFF".into()],
+                ..effect()
+            },
+            Effect {
+                colors: vec!["#FF2000".into(), "red".into()],
+                ..effect()
+            },
+            Effect {
+                speed: 0,
+                ..effect()
+            },
+            Effect {
+                speed: 11,
+                ..effect()
+            },
+            Effect {
+                brightness: 0,
+                ..effect()
+            },
+            Effect {
+                brightness: 101,
+                ..effect()
+            },
+            Effect {
+                duration_ms: 60_001,
+                ..effect()
+            },
+        ] {
+            assert_eq!(
+                effect_problems(std::slice::from_ref(&bad)).len(),
+                1,
+                "{bad:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn effect_names_and_slots_must_be_unique() {
+        let other = Effect {
+            name: "Other".into(),
+            slot: 2,
+            ..effect()
+        };
+        assert!(effect_problems(&[effect(), other.clone()]).is_empty());
+        let same_name = Effect {
+            name: " test ".into(),
+            ..other.clone()
+        };
+        assert_eq!(effect_problems(&[effect(), same_name]).len(), 1);
+        let same_slot = Effect { slot: 1, ..other };
+        assert_eq!(effect_problems(&[effect(), same_slot]).len(), 1);
+
+        let mut config = Config::default_config();
+        config.effects[1].slot = 1;
+        assert!(matches!(config.validate(), Err(ConfigError::Invalid(_))));
     }
 
     #[test]

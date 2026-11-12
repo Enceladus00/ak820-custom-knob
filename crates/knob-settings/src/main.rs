@@ -7,7 +7,7 @@
 use std::fs;
 use std::path::Path;
 
-use knob_core::{Config, LightingLayout};
+use knob_core::{Config, Effect, LightingLayout};
 use knob_win::{autostart, paths};
 use serde::Serialize;
 use tauri::Manager;
@@ -172,6 +172,64 @@ fn apply_lighting(layout: LightingLayout) -> Result<(), String> {
     knob_win::lighting::apply(&layout).map_err(|e| e.to_string())
 }
 
+/// What the keyboard runs, for the Effects page.
+#[derive(Serialize)]
+struct EffectFirmware {
+    /// "stock", "live" or "unknown" (keyboard missing or asleep).
+    kind: &'static str,
+    /// LIVE version, when `kind` is "live".
+    version: Option<u8>,
+    /// Whether effects can play (LIVE v2 or newer, RAM self-test passed).
+    effects: bool,
+    /// Why it is "unknown": the codes the UI translates.
+    error: Option<String>,
+}
+
+/// Asks the keyboard which firmware it runs. RAM-only.
+#[tauri::command(async)]
+fn effect_firmware() -> EffectFirmware {
+    use knob_win::effects::{Firmware, firmware_now};
+    match firmware_now() {
+        Ok(Firmware::Stock) => EffectFirmware {
+            kind: "stock",
+            version: None,
+            effects: false,
+            error: None,
+        },
+        Ok(fw @ Firmware::Live(info)) => EffectFirmware {
+            kind: "live",
+            version: Some(info.version),
+            effects: fw.has_effects(),
+            error: None,
+        },
+        Err(e) => EffectFirmware {
+            kind: "unknown",
+            version: None,
+            effects: false,
+            error: Some(e.to_string()),
+        },
+    }
+}
+
+/// Uploads the effect being edited and plays it on the keyboard. RAM-only:
+/// nothing is stored in the keyboard's flash.
+#[tauri::command(async)]
+fn effect_play(effect: Effect) -> Result<(), String> {
+    let mut errors = Vec::new();
+    effect.check(&mut errors);
+    if let Some(problem) = errors.into_iter().next() {
+        return Err(problem);
+    }
+    let def = effect.to_def().ok_or("the effect can't be sent")?;
+    knob_win::effects::play_now(&def).map_err(|e| e.to_string())
+}
+
+/// Stops the effect playing on the keyboard. RAM-only.
+#[tauri::command(async)]
+fn effect_stop() -> Result<(), String> {
+    knob_win::effects::stop_now().map_err(|e| e.to_string())
+}
+
 #[derive(Serialize)]
 struct Autostart {
     /// False when the background program isn't next to this exe.
@@ -223,6 +281,9 @@ fn main() {
             running_apps,
             open_location,
             apply_lighting,
+            effect_firmware,
+            effect_play,
+            effect_stop,
             daemon_state,
             start_daemon,
             app_version,

@@ -11,8 +11,9 @@ use std::time::{Duration, Instant};
 
 use hidapi::{HidApi, HidDevice};
 use knob_rgb::{
-    Command, DeviceInfo, FRAME_LEN, INFO_LEN, LED_LEN, LedState, PID_DONGLE, USAGE, USAGE_PAGE,
-    VID, WIRE_LEN, parse_reply, read_request, to_wire,
+    Command, DeviceInfo, EffectDef, FRAME_LEN, INFO_LEN, LED_LEN, LIVE_STATUS_INDEX, LedState,
+    LiveInfo, PID_DONGLE, Pattern, ReadBlock, USAGE, USAGE_PAGE, VID, WIRE_LEN, frames,
+    parse_reply, read_request, to_wire,
 };
 
 const REPLY_TIMEOUT: Duration = Duration::from_millis(1500);
@@ -427,6 +428,415 @@ fn bench_reads(out: &mut String) -> Result<(), String> {
     Ok(())
 }
 
+/// `rgb-identify`: asks whether the keyboard runs the live-lighting patch.
+/// Stock firmware just echoes the request.
+pub fn identify(log_dir: &Path, stamp: u64) {
+    let mut out = String::new();
+    let result = open().and_then(|device| probe_live(&device, &mut out));
+    match result {
+        Ok(Some(info)) => {
+            let _ = writeln!(out, "live-lighting patch v{} is running", info.version);
+        }
+        Ok(None) => {
+            let _ = writeln!(out, "stock firmware (no live-lighting patch)");
+        }
+        Err(e) => {
+            let _ = writeln!(out, "stopped: {e}");
+        }
+    }
+    finish(log_dir, "rgb-identify", stamp, &out);
+}
+
+fn probe_live(device: &HidDevice, out: &mut String) -> Result<Option<LiveInfo>, String> {
+    let reply = transfer(
+        device,
+        out,
+        Command::Identify,
+        &frames(Command::Identify, &[]),
+    )?;
+    Ok(LiveInfo::parse(&reply))
+}
+
+/// `rgb-live`: shows lighting without storing it, on patched firmware only.
+/// Takes the same --effect/--color/--brightness/--speed options as rgb-set,
+/// starting from the current state, or --saved to go back to the stored
+/// lighting. Nothing is written to flash either way.
+pub fn live(log_dir: &Path, stamp: u64, args: &[String]) {
+    let mut out = String::new();
+    if let Err(e) = run_live(&mut out, args) {
+        let _ = writeln!(out, "stopped: {e}");
+    }
+    finish(log_dir, "rgb-live", stamp, &out);
+}
+
+/// `rgb-live --bench N`: times N live commands against N plain reads on the
+/// same link. A stored write costs ~31 ms of flash work; a RAM-only command
+/// should cost about the same as a read.
+fn live_bench(out: &mut String, device: &HidDevice, count: usize) -> Result<(), String> {
+    let state = read_led(device, &mut String::new())?.normalized();
+    let frames = state.live_request();
+    let reads = read_request(Command::ReadLed, LED_LEN);
+    let mut scratch = String::new();
+    let mut time =
+        |command: Command, frames: &[[u8; FRAME_LEN]]| -> Result<Vec<Duration>, String> {
+            let mut times = Vec::with_capacity(count);
+            for _ in 0..count {
+                scratch.clear();
+                let started = Instant::now();
+                transfer(device, &mut scratch, command, frames)?;
+                times.push(started.elapsed());
+            }
+            times.sort();
+            Ok(times)
+        };
+    let live = time(Command::LiveLed, &frames)?;
+    let read = time(Command::ReadLed, &reads)?;
+    let ms = |d: Duration| d.as_secs_f64() * 1000.0;
+    for (name, t) in [("0x30 live", &live), ("0x13 read", &read)] {
+        let _ = writeln!(
+            out,
+            "{name}: {} round trips, min {:.2} ms, median {:.2} ms, max {:.2} ms",
+            t.len(),
+            ms(t[0]),
+            ms(t[t.len() / 2]),
+            ms(t[t.len() - 1])
+        );
+    }
+    Ok(())
+}
+
+fn run_live(out: &mut String, args: &[String]) -> Result<(), String> {
+    if let [flag, n] = args
+        && flag == "--bench"
+    {
+        let count: usize = n
+            .parse()
+            .ok()
+            .filter(|n| (1..=500).contains(n))
+            .ok_or("--bench needs 1 to 500")?;
+        let device = open()?;
+        if probe_live(&device, out)?.is_none() {
+            return Err("this keyboard runs stock firmware; rgb-live needs the patch".into());
+        }
+        return live_bench(out, &device, count);
+    }
+    let saved = args.iter().any(|a| a == "--saved");
+    let rest: Vec<String> = args.iter().filter(|a| *a != "--saved").cloned().collect();
+    let edits = parse_args(&rest)?;
+    let device = open()?;
+    let Some(info) = probe_live(&device, out)? else {
+        return Err("this keyboard runs stock firmware; rgb-live needs the patch".into());
+    };
+    let _ = writeln!(out, "live-lighting patch v{}", info.version);
+
+    if saved {
+        transfer(
+            &device,
+            out,
+            Command::LiveRestore,
+            &frames(Command::LiveRestore, &[]),
+        )?;
+    } else {
+        // A live block needs no valid starting point: after an "off" state
+        // the read-back can carry speed 0, which the parser rejects.
+        let mut state = match read_led(&device, out) {
+            Ok(led) => led.normalized(),
+            Err(e) => {
+                let _ = writeln!(out, "starting from a default block ({e})");
+                LedState::parse(&[1, 255, 255, 255, 255, 0, 0, 0, 0, 5, 3, 0, 0, 0, 0xAA, 0x55])
+                    .map_err(|e| format!("{e:?}"))?
+            }
+        };
+        if let Some(effect) = edits.effect {
+            state.set_effect(effect).map_err(|e| format!("{e:?}"))?;
+        }
+        if let Some(color) = edits.color {
+            state.set_color(color);
+        }
+        if let Some(level) = edits.brightness {
+            state.set_brightness(level).map_err(|e| format!("{e:?}"))?;
+        }
+        if let Some(level) = edits.speed {
+            state.set_speed(level).map_err(|e| format!("{e:?}"))?;
+        }
+        let reply = transfer(&device, out, Command::LiveLed, &state.live_request())?;
+        match reply.get(LIVE_STATUS_INDEX) {
+            Some(0) => {}
+            Some(code) => return Err(format!("the keyboard refused the block (status {code})")),
+            None => return Err("short reply".into()),
+        }
+    }
+    let now = read_led(&device, out)?;
+    describe(out, &now);
+    Ok(())
+}
+
+/// `rgb-effect`: the LIVE v2 effect engine. Everything here is RAM-only on
+/// the keyboard.
+///
+///   rgb-effect measure
+///   rgb-effect define <slot> <pattern> <speed> <brightness> <#RRGGBB,...> [duration_ms]
+///   rgb-effect play <slot> | stop
+///   rgb-effect demo
+pub fn effect(log_dir: &Path, stamp: u64, args: &[String]) {
+    let mut out = String::new();
+    if let Err(e) = run_effect(&mut out, args) {
+        let _ = writeln!(out, "stopped: {e}");
+    }
+    finish(log_dir, "rgb-effect", stamp, &out);
+}
+
+fn engine(device: &HidDevice, out: &mut String) -> Result<LiveInfo, String> {
+    let info = probe_live(device, out)?
+        .ok_or("this keyboard runs stock firmware; effects need LIVE v2")?;
+    if !info.has_effects() {
+        return Err(format!(
+            "this keyboard runs LIVE v{} (RAM self-test {}); effects need v2",
+            info.version,
+            if info.ram_ok { "ok" } else { "failed" }
+        ));
+    }
+    Ok(info)
+}
+
+fn send_checked(
+    device: &HidDevice,
+    out: &mut String,
+    command: Command,
+    frames: &[[u8; FRAME_LEN]],
+) -> Result<(), String> {
+    let reply = transfer(device, out, command, frames)?;
+    match reply.get(LIVE_STATUS_INDEX) {
+        Some(0) => Ok(()),
+        Some(code) => Err(format!(
+            "command 0x{:02X} refused, status {code}",
+            command.code()
+        )),
+        None => Err("short reply".into()),
+    }
+}
+
+/// Counts LED frames over a few seconds and gives the engine the real period.
+fn measure(device: &HidDevice, out: &mut String) -> Result<u32, String> {
+    let mut scratch = String::new();
+    let a = engine(device, &mut scratch)?;
+    let started = Instant::now();
+    std::thread::sleep(Duration::from_secs(3));
+    let b = engine(device, &mut scratch)?;
+    let elapsed = started.elapsed();
+    let frames = b.frames.wrapping_sub(a.frames);
+    if frames == 0 {
+        return Err("the frame counter did not move".into());
+    }
+    let micros = (elapsed.as_micros() / u128::from(frames)) as u32;
+    let _ = writeln!(
+        out,
+        "{frames} LED frames in {:.2} s: {:.2} ms per frame ({:.1} fps)",
+        elapsed.as_secs_f64(),
+        f64::from(micros) / 1000.0,
+        1e6 / f64::from(micros)
+    );
+    send_checked(
+        device,
+        &mut scratch,
+        Command::SetFramePeriod,
+        &knob_rgb::frame_period_request(micros),
+    )?;
+    Ok(micros)
+}
+
+fn parse_colors(list: &str) -> Result<Vec<[u8; 3]>, String> {
+    list.split(',')
+        .map(|c| {
+            parse_hex(c)?
+                .try_into()
+                .map_err(|_| format!("bad colour {c}, use #RRGGBB"))
+        })
+        .collect()
+}
+
+fn run_effect(out: &mut String, args: &[String]) -> Result<(), String> {
+    let device = open()?;
+    let info = engine(&device, out)?;
+    let _ = writeln!(
+        out,
+        "LIVE v{}, RAM ok, {} frames so far",
+        info.version, info.frames
+    );
+    match args
+        .iter()
+        .map(String::as_str)
+        .collect::<Vec<_>>()
+        .as_slice()
+    {
+        ["measure"] => {
+            measure(&device, out)?;
+        }
+        [
+            "define",
+            slot,
+            pattern,
+            speed,
+            brightness,
+            colors,
+            rest @ ..,
+        ] => {
+            let def = EffectDef::new(
+                number(slot)?,
+                Pattern::parse(pattern).ok_or_else(|| format!("unknown pattern {pattern}"))?,
+                number(speed)?,
+                number(brightness)?,
+                &parse_colors(colors)?,
+                match rest {
+                    [] => 0,
+                    [ms] => ms.parse().map_err(|_| format!("bad duration {ms}"))?,
+                    _ => return Err("too many arguments".into()),
+                },
+            )
+            .map_err(|e| format!("invalid effect: {e:?}"))?;
+            send_checked(&device, out, Command::DefineEffect, &def.define_request())?;
+            let _ = writeln!(out, "defined slot {}", def.slot());
+        }
+        ["play", slot] => {
+            send_checked(
+                &device,
+                out,
+                Command::PlayEffect,
+                &knob_rgb::play_request(number(slot)?),
+            )?;
+        }
+        ["stop"] => {
+            send_checked(&device, out, Command::StopEffect, &knob_rgb::stop_request())?;
+        }
+        ["demo"] => {
+            measure(&device, out)?;
+            let demo: [(&str, Pattern, u8, &[[u8; 3]]); 5] = [
+                (
+                    "Fire",
+                    Pattern::Flicker,
+                    6,
+                    &[[0xFF, 0x20, 0], [0xFF, 0x70, 0], [0xFF, 0xC0, 0x40]],
+                ),
+                (
+                    "Frost",
+                    Pattern::Wave,
+                    3,
+                    &[[0xA0, 0xE8, 0xFF], [0x20, 0x60, 0xFF], [0xFF, 0xFF, 0xFF]],
+                ),
+                (
+                    "Poison",
+                    Pattern::Pulse,
+                    5,
+                    &[[0x40, 0xFF, 0x20], [0, 0x30, 0]],
+                ),
+                (
+                    "Low health",
+                    Pattern::Pulse,
+                    8,
+                    &[[0xFF, 0, 0], [0x20, 0, 0]],
+                ),
+                (
+                    "Shock",
+                    Pattern::Sparkle,
+                    9,
+                    &[[0x10, 0x10, 0x30], [0xFF, 0xFF, 0xFF], [0x80, 0xC0, 0xFF]],
+                ),
+            ];
+            for (i, (name, pattern, speed, colors)) in demo.iter().enumerate() {
+                let slot = i as u8 + 1;
+                let def = EffectDef::new(slot, *pattern, *speed, 100, colors, 0)
+                    .map_err(|e| format!("{name}: {e:?}"))?;
+                send_checked(
+                    &device,
+                    &mut String::new(),
+                    Command::DefineEffect,
+                    &def.define_request(),
+                )?;
+            }
+            for (i, (name, ..)) in demo.iter().enumerate() {
+                let _ = writeln!(out, "playing {name} (slot {})", i + 1);
+                println!("playing {name}...");
+                send_checked(
+                    &device,
+                    &mut String::new(),
+                    Command::PlayEffect,
+                    &knob_rgb::play_request(i as u8 + 1),
+                )?;
+                std::thread::sleep(Duration::from_secs(4));
+            }
+            send_checked(&device, out, Command::StopEffect, &knob_rgb::stop_request())?;
+            let _ = writeln!(out, "stopped; back to the normal lighting");
+        }
+        _ => {
+            return Err(
+                "usage: rgb-effect measure | define <slot> <pattern> <speed> <brightness> \
+                        <#RRGGBB,...> [duration_ms] | play <slot> | stop | demo"
+                    .into(),
+            );
+        }
+    }
+    Ok(())
+}
+
+/// `rgb-dump`: saves every stored settings block the keyboard lets us read,
+/// as a backup before any firmware work. Reads only.
+pub fn dump(log_dir: &Path, stamp: u64) {
+    let mut out = String::new();
+    let dir = log_dir.join(format!("dump-{stamp}"));
+    if let Err(e) = run_dump(&mut out, &dir) {
+        let _ = writeln!(out, "stopped: {e}");
+    }
+    finish(log_dir, "rgb-dump", stamp, &out);
+}
+
+fn run_dump(out: &mut String, dir: &Path) -> Result<(), String> {
+    std::fs::create_dir_all(dir).map_err(|e| format!("cannot create {}: {e}", dir.display()))?;
+    let device = open()?;
+    let mut scratch = String::new();
+    let led = read_led(&device, &mut scratch)?;
+    describe(out, &led);
+    save(dir, "block_13_lighting.bin", led.raw())?;
+    let _ = writeln!(out, "0x13 lighting: {}", hex(led.raw()));
+
+    for block in ReadBlock::ALL {
+        let command = Command::ReadBlock(block);
+        scratch.clear();
+        let mut data = transfer(
+            &device,
+            &mut scratch,
+            command,
+            &read_request(command, ReadBlock::LEN),
+        )?;
+        // The short last frame still carries a full chunk; only its first
+        // bytes belong to the block.
+        if data.len() < ReadBlock::LEN {
+            return Err(format!(
+                "block 0x{:02X}: got {} bytes",
+                command.code(),
+                data.len()
+            ));
+        }
+        data.truncate(ReadBlock::LEN);
+        let name = format!("block_{:02x}.bin", command.code());
+        save(dir, &name, &data)?;
+        let used = data.iter().filter(|&&b| b != 0 && b != 0xFF).count();
+        let _ = writeln!(
+            out,
+            "0x{:02X}: {} bytes, {used} not 00/FF, first 16: {}",
+            command.code(),
+            data.len(),
+            hex(&data[..16])
+        );
+    }
+    let _ = writeln!(out, "saved to {}", dir.display());
+    Ok(())
+}
+
+fn save(dir: &Path, name: &str, data: &[u8]) -> Result<(), String> {
+    let path = dir.join(name);
+    std::fs::write(&path, data).map_err(|e| format!("cannot write {}: {e}", path.display()))
+}
+
 fn finish(log_dir: &Path, name: &str, stamp: u64, out: &str) {
     print!("{out}");
     let path = log_dir.join(format!("{name}-{stamp}.txt"));
@@ -436,8 +846,29 @@ fn finish(log_dir: &Path, name: &str, stamp: u64, out: &str) {
     }
 }
 
+/// Set by [`open`]: whether the keyboard is reached over the USB cable
+/// (64-byte reports) rather than the 2.4 GHz receiver (32-byte reports).
+static WIRED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+/// Opens the keyboard's vendor interface: over the cable when the keyboard
+/// is in cable mode, otherwise through the 2.4 GHz receiver. Both speak the
+/// same `AA`/`55` frames; only the report size differs.
 fn open() -> Result<HidDevice, String> {
+    use std::sync::atomic::Ordering;
     let api = HidApi::new().map_err(|e| format!("hidapi init failed: {e}"))?;
+    let wired = api.device_list().find(|d| {
+        d.vendor_id() == VID
+            && d.product_id() == knob_rgb::PID_WIRED
+            && d.usage_page() == knob_rgb::WIRED_USAGE_PAGE
+            && d.usage() == knob_rgb::WIRED_USAGE
+    });
+    if let Some(info) = wired {
+        WIRED.store(true, Ordering::Relaxed);
+        return info
+            .open_device(&api)
+            .map_err(|e| format!("cannot open the keyboard over the cable: {e}"));
+    }
+    WIRED.store(false, Ordering::Relaxed);
     let info = api
         .device_list()
         .find(|d| {
@@ -446,9 +877,20 @@ fn open() -> Result<HidDevice, String> {
                 && d.usage_page() == USAGE_PAGE
                 && d.usage() == USAGE
         })
-        .ok_or("the 2.4 GHz receiver's lighting interface was not found")?;
+        .ok_or("neither the wired keyboard nor the 2.4 GHz receiver was found")?;
     info.open_device(&api)
         .map_err(|e| format!("cannot open the receiver: {e}"))
+}
+
+/// A frame as written to whichever link [`open`] chose.
+fn wire_frame(frame: &[u8; FRAME_LEN]) -> Vec<u8> {
+    if WIRED.load(std::sync::atomic::Ordering::Relaxed) {
+        let mut wire = vec![0u8; knob_rgb::WIRED_FRAME_LEN + 1];
+        wire[1..=FRAME_LEN].copy_from_slice(frame);
+        wire
+    } else {
+        to_wire(frame).to_vec()
+    }
 }
 
 /// Sends the frames of one transfer, waiting for each acknowledgement, and
@@ -463,7 +905,7 @@ fn transfer(
     for frame in frames {
         let _ = writeln!(out, "  -> {}", hex(frame));
         device
-            .write(&to_wire(frame))
+            .write(&wire_frame(frame))
             .map_err(|e| format!("write failed: {e}"))?;
 
         let deadline = Instant::now() + REPLY_TIMEOUT;
@@ -475,7 +917,7 @@ fn transfer(
                     command.code()
                 ));
             }
-            let mut buf = [0u8; WIRE_LEN];
+            let mut buf = [0u8; knob_rgb::WIRED_FRAME_LEN + 1];
             let n = device
                 .read_timeout(&mut buf, left.as_millis() as i32)
                 .map_err(|e| format!("read failed: {e}"))?;

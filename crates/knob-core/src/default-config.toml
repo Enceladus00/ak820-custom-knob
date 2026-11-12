@@ -133,6 +133,63 @@ colorful = true
 brightness = 4
 speed = 3
 
+# ---------------------------------------------------------------- effects
+# Effects for the patched keyboard firmware, made on the Effects page in
+# Settings. They are kept in the keyboard's memory only (never its flash), and
+# a game or the knob starts and stops them by slot. See docs/effects-format.md.
+#
+# slot:        1 to 8, each used once
+# pattern:     solid, pulse, wave, flicker, sparkle
+# colors:      1 to 4 colours, "#RRGGBB"
+# speed:       1 to 10
+# brightness:  1 to 100 (percent)
+# duration_ms: 0 plays until stopped; otherwise it stops by itself (up to 60000)
+
+[[effects]]
+name = "Fire"
+slot = 1
+pattern = "flicker"
+colors = ["#FF2000", "#FF7000", "#FFC040"]
+speed = 6
+brightness = 100
+duration_ms = 0
+
+[[effects]]
+name = "Frost"
+slot = 2
+pattern = "wave"
+colors = ["#A0E8FF", "#2060FF", "#FFFFFF"]
+speed = 3
+brightness = 100
+duration_ms = 0
+
+[[effects]]
+name = "Poison"
+slot = 3
+pattern = "pulse"
+colors = ["#40FF20", "#003000"]
+speed = 5
+brightness = 100
+duration_ms = 0
+
+[[effects]]
+name = "Low health"
+slot = 4
+pattern = "pulse"
+colors = ["#FF0000", "#200000"]
+speed = 8
+brightness = 100
+duration_ms = 0
+
+[[effects]]
+name = "Shock"
+slot = 5
+pattern = "sparkle"
+colors = ["#101030", "#FFFFFF", "#80C0FF"]
+speed = 9
+brightness = 100
+duration_ms = 0
+
 # ---------------------------------------------------------------- key remapping
 # Off until you add a rule. Each [[remap]] turns one key or shortcut into
 # another key, a character or a shortcut, in every app or only in the apps
