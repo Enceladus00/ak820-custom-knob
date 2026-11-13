@@ -23,6 +23,18 @@ registerLocale('en', 'English', {
     general: { label: 'General', title: 'General', sub: 'Appearance, timing, files and defaults.' },
   },
 
+  find: {
+    placeholder: 'Find a setting',
+    shortcut: 'Find a setting (Ctrl+F)',
+    title: 'Search',
+    count: { one: '{count} match for “{query}”', other: '{count} matches for “{query}”' },
+    none: 'Nothing matches “{query}”.',
+    noneHint: 'Search looks at page names, settings, and the names of your modes, apps, remaps, macros, lighting and effects. Snippets aren’t searched: their text stays encrypted.',
+    announce: { one: '{count} result', other: '{count} results' },
+    resultsLabel: 'Search results',
+    keys: '<kbd>↑</kbd> <kbd>↓</kbd> to choose, <kbd>Enter</kbd> to open, <kbd>Esc</kbd> to clear.',
+  },
+
   status: {
     saving: 'Saving…',
     saved: 'Saved',

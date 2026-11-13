@@ -14,6 +14,12 @@
         <img src="icon.png" alt="">
         <div><strong data-i18n="app.name"></strong><small data-i18n="app.subtitle"></small></div>
       </div>
+      <div class="find" role="search">
+        <input type="search" id="find" autocomplete="off" spellcheck="false" role="combobox"
+          aria-controls="find-results" aria-expanded="false" aria-autocomplete="list"
+          data-i18n-placeholder="find.placeholder" data-i18n-title="find.shortcut" data-i18n-label="find.placeholder">
+        <span id="find-status" class="sr-only" role="status" aria-live="polite"></span>
+      </div>
       <nav id="nav"></nav>
       <div class="sidebar-foot" data-i18n="app.footer"></div>
     </aside>
@@ -42,5 +48,6 @@
   <!-- One line per language; see docs/translating.md. -->
   <script src="locales/en.js"></script>
   <script src="app.js"></script>
+  <script src="search.js"></script>
 </body>
 </html>

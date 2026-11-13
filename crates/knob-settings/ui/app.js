@@ -227,6 +227,8 @@ function applyAppearance() {
 
   document.querySelectorAll('[data-i18n]').forEach((el) => { el.innerHTML = t(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-title]').forEach((el) => { el.title = tPlain(el.dataset.i18nTitle); });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => { el.placeholder = tPlain(el.dataset.i18nPlaceholder); });
+  document.querySelectorAll('[data-i18n-label]').forEach((el) => { el.setAttribute('aria-label', tPlain(el.dataset.i18nLabel)); });
   document.title = `${tPlain('app.name')} – ${tPlain('app.subtitle')}`;
 }
 
@@ -238,6 +240,15 @@ function render() {
     <button class="nav-item ${p.id === state.page ? 'active' : ''}" data-cmd="nav" data-page="${p.id}">
       ${icon(p.icon)}<span>${t(`pages.${p.id}.label`)}</span>
     </button>`).join('');
+  // While the search box has text, the results take the page's place (search.js).
+  const searching = typeof findActive === 'function' && findActive();
+  document.getElementById('find')?.setAttribute('aria-expanded', String(searching));
+  if (searching) {
+    renderFind();
+    renderPicker();
+    updateChrome();
+    return;
+  }
   $('#title').innerHTML = t(`pages.${state.page}.title`);
   $('#subtitle').innerHTML = t(`pages.${state.page}.sub`);
 

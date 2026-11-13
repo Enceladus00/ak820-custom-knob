@@ -90,6 +90,59 @@ button, input, select { font: inherit; color: inherit; }
 .brand strong { display: block; font-size: 15px; }
 .brand small { color: var(--muted); }
 
+.find { padding: 0 0 12px; }
+.find input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+}
+.find input:focus { outline: 2px solid var(--accent); outline-offset: -1px; background: var(--surface); }
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.find-results { display: flex; flex-direction: column; gap: 4px; }
+.find-hit {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
+}
+.find-hit:hover { background: var(--surface-2); }
+.find-hit.active { border-color: var(--accent); background: var(--accent-soft); }
+.find-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.find-title { font-weight: 600; }
+.find-detail { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.find-page { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; flex: none; }
+.find-page svg { width: 14px; height: 14px; }
+.find-hit mark { background: #ffd84d; color: #1c1f24; border-radius: 2px; padding: 0 1px; }
+.find-empty strong { display: block; margin-bottom: 4px; }
+
+@keyframes find-flash {
+  from { box-shadow: 0 0 0 3px var(--accent); }
+  to { box-shadow: 0 0 0 3px transparent; }
+}
+.find-flash { animation: find-flash 1.6s ease-out; border-radius: 8px; }
+
 #nav { display: flex; flex-direction: column; gap: 2px; }
 
 .nav-item {
