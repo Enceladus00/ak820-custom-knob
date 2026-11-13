@@ -124,6 +124,30 @@ hotkey can run a different macro in each app.
 Macro text sits unencrypted in the config file, so keep passwords out of it.
 Some games ban macros; check before you use one there.
 
+## Text snippets
+
+Type a short trigger and it turns into the full text, in any app: `;mail`
+becomes your email address, `;sig` your signature, `;date` today's date.
+Make, edit and delete them on the **Snippets** page in Settings; changes
+apply at once.
+
+The text can use `{date}` and `{time}` (in your Windows format, or your own,
+like `{date:yyyy-MM-dd}`), and `{cursor}` to leave the cursor there. A
+snippet can work everywhere or only in the apps you pick.
+
+Snippets are made with privacy in mind:
+
+* They're saved in their own file, encrypted for your Windows user, not in
+  the plain config file. Only you, on this PC, can read it.
+* They never expand in password boxes, and nothing you type there is looked
+  at. Password managers are excluded to start with, and you can add apps.
+* The text is typed, not pasted, so it never reaches the clipboard or its
+  history.
+* Only the last few characters you type are kept, in memory, and they're
+  wiped whenever you switch fields or apps. Nothing typed is ever logged.
+* A snippet can be marked hidden, so Settings doesn't show its text until
+  you click Show.
+
 ## Mouse mode
 
 Turn it on in Settings, then press Ctrl+Alt+M (you can change this) or a knob
@@ -185,7 +209,9 @@ passes everything else through. If you remap keys or turn on macros, mouse
 mode or click hints, it also acts on the keys those use.
 
 It doesn't record what you type, its logs contain no key presses, and it never
-connects to the internet. Macro recording only captures keys pressed inside the
+connects to the internet. With snippets set up, it keeps the last 32 typed
+characters in memory to spot a trigger (never in password boxes), and wipes
+them when you change fields or apps. Macro recording only captures keys pressed inside the
 Settings window while you're recording.
 
 ## How it works

@@ -21,6 +21,7 @@ pub mod remap;
 pub mod resolver;
 pub mod router;
 pub mod signal;
+pub mod snippets;
 
 pub use config::{
     Action, Config, ConfigError, Effect, LightingLayout, Mode, MouseButton, Now, Pick, Profile,

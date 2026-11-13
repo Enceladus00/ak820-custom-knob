@@ -39,6 +39,36 @@ fn modified(path: &Path) -> Option<SystemTime> {
     fs::metadata(path).and_then(|m| m.modified()).ok()
 }
 
+/// Loads the encrypted snippet list into the keyboard hook, now and every
+/// time Settings saves it. A file that can't be read turns expansion off.
+pub fn load_and_watch_snippets() {
+    use knob_win::{snippet_store, snippets};
+    let load = || match snippet_store::load() {
+        Ok(store) => snippets::set_store(Some(store)),
+        Err(e) => {
+            log::warn!("snippets: {e}; expansion is off");
+            snippets::set_store(None);
+        }
+    };
+    load();
+    let path = snippet_store::path();
+    thread::Builder::new()
+        .name("snippets-watch".into())
+        .spawn(move || {
+            let mut last = modified(&path);
+            loop {
+                thread::sleep(Duration::from_millis(750));
+                let now = modified(&path);
+                if now != last {
+                    last = now;
+                    thread::sleep(Duration::from_millis(150));
+                    load();
+                }
+            }
+        })
+        .expect("spawn snippets watcher");
+}
+
 /// Calls `on_change` with the new config whenever the file is saved.
 pub fn watch(on_change: impl Fn(Result<Config, String>) + Send + 'static) {
     let path = paths::config_file();

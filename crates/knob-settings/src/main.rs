@@ -263,6 +263,25 @@ fn set_autostart(enabled: bool) -> Result<Autostart, String> {
     Ok(autostart_state())
 }
 
+// ---- text snippets: kept apart from config.toml, encrypted for this user
+
+#[tauri::command]
+fn snippets_load() -> Result<knob_core::snippets::SnippetStore, String> {
+    knob_win::snippet_store::load()
+}
+
+/// Problems with a list, in plain words; empty when it can be saved.
+#[tauri::command]
+fn snippets_check(store: knob_core::snippets::SnippetStore) -> Vec<String> {
+    store.problems()
+}
+
+/// Encrypts and saves the whole list; the knob program picks it up at once.
+#[tauri::command]
+fn snippets_save(store: knob_core::snippets::SnippetStore) -> Result<(), String> {
+    knob_win::snippet_store::save(&store)
+}
+
 fn main() {
     tauri::Builder::default()
         // Opening Settings again (tray, Start menu) focuses the open window.
@@ -288,7 +307,10 @@ fn main() {
             start_daemon,
             app_version,
             get_autostart,
-            set_autostart
+            set_autostart,
+            snippets_load,
+            snippets_check,
+            snippets_save
         ])
         .run(tauri::generate_context!())
         .expect("failed to start the settings window");

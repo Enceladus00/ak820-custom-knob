@@ -20,6 +20,8 @@ pub mod lighting;
 pub mod output;
 pub mod paths;
 pub mod process;
+pub mod snippet_store;
+pub mod snippets;
 
 /// Marks input we inject ourselves (`dwExtraInfo`), so our hook lets it pass.
 pub const MARKER: usize = 0x4B4E_4F42; // "KNOB"

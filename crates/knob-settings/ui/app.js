@@ -19,6 +19,7 @@ const PAGES = [
   { id: 'apps', icon: 'apps' },
   { id: 'remap', icon: 'remap' },
   { id: 'macros', icon: 'macro' },
+  { id: 'snippets', icon: 'text' },
   { id: 'controls', icon: 'pointer' },
   { id: 'lighting', icon: 'light' },
   { id: 'effects', icon: 'spark' },
@@ -104,6 +105,7 @@ const SPECIAL_KEYS = ['MediaPlayPause', 'MediaNext', 'MediaPrev', 'MediaStop', '
 const THEMES = ['system', 'light', 'dark'];
 
 const ICONS = {
+  text: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7V5h12v2M10 5v14M7 19h6"/><path d="M15 13h5M17.5 13v6"/></svg>',
   dial: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5.6 18.4A9 9 0 1 1 18.4 18.4"/><circle cx="12" cy="12" r="4"/><path d="M14.5 9.5 17 7"/></svg>',
   apps: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="2"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="2"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="2"/></svg>',
   gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>',
@@ -237,7 +239,7 @@ function render() {
 
   const main = $('#main');
   const scroll = main.scrollTop;
-  const pages = { modes: modesPage, apps: appsPage, remap: remapPage, macros: macrosPage, controls: controlsPage, lighting: lightingPage, effects: effectsPage, general: generalPage };
+  const pages = { modes: modesPage, apps: appsPage, remap: remapPage, macros: macrosPage, snippets: snippetsPage, controls: controlsPage, lighting: lightingPage, effects: effectsPage, general: generalPage };
   main.innerHTML = pages[state.page]();
   main.scrollTop = scroll;
   renderPicker();
@@ -494,6 +496,8 @@ function pickerList() {
   if (state.picker == null) return null;
   if (state.pickerFor === 'remaps') return state.config.remaps[state.picker]?.apps;
   if (state.pickerFor === 'macros') return state.config.macros[state.picker]?.apps;
+  if (state.pickerFor === 'snippet') return snip.draft?.apps;
+  if (state.pickerFor === 'snippetExclude') return snip.store?.exclude;
   return state.config.profiles[state.picker]?.match.exe;
 }
 
@@ -981,6 +985,306 @@ function drawEffectPreview(now) {
   requestAnimationFrame(drawEffectPreview);
 }
 
+// ---------- snippets page (text expansion)
+//
+// Kept apart from state.config: snippets live in their own file, encrypted
+// for this Windows user, and every create, edit or delete is saved at once.
+// The decrypted list is only held while this page is open.
+
+const snip = {
+  store: null, // { enabled, exclude, snippets } once loaded
+  error: null,
+  loading: false,
+  index: null, // the snippet being edited; null with a draft = a new one
+  draft: null,
+  reveal: false, // show a secret snippet's text
+  problems: [],
+  busy: false,
+  filter: '',
+};
+const SNIP_PLACEHOLDERS = ['{date}', '{time}', '{cursor}'];
+
+const blankSnippet = () => ({ trigger: ';', text: '', enabled: true, secret: false, apps: [] });
+
+async function loadSnippets() {
+  snip.loading = true;
+  try {
+    snip.store = await invoke('snippets_load');
+    snip.error = null;
+    if (snip.draft == null && snip.store.snippets.length) selectSnippet(0);
+  } catch (e) {
+    snip.store = null;
+    snip.error = String(e);
+  }
+  snip.loading = false;
+  if (state.page === 'snippets') render();
+}
+
+/** Forgets the decrypted list (on leaving the page). */
+function forgetSnippets() {
+  Object.assign(snip, { store: null, error: null, index: null, draft: null, reveal: false, problems: [], filter: '' });
+}
+
+function selectSnippet(i) {
+  snip.index = i;
+  snip.draft = i == null ? blankSnippet() : clone(snip.store.snippets[i]);
+  snip.reveal = false;
+  snip.problems = [];
+}
+
+function snippetDirty() {
+  if (!snip.draft) return false;
+  const saved = snip.index == null ? blankSnippet() : snip.store?.snippets[snip.index];
+  return JSON.stringify(saved) !== JSON.stringify(snip.draft);
+}
+
+/** True when it's fine to drop the draft (nothing changed, or the user agrees). */
+function leaveSnippetOk() {
+  return !snippetDirty() || confirm(tPlain('snippets.confirmLeave'));
+}
+
+function snippetPreview(text) {
+  const line = String(text).split('\n')[0];
+  return line.length > 38 ? `${line.slice(0, 37)}…` : line;
+}
+
+function snippetsPage() {
+  if (snip.error) {
+    return `<div class="banner error">${t('snippets.loadError', { error: snip.error })}</div>
+      <p class="hint">${t('snippets.loadErrorHint')}</p>`;
+  }
+  if (!snip.store) {
+    if (!snip.loading) loadSnippets();
+    return `<div class="card muted">${t('snippets.loading')}</div>`;
+  }
+  const store = snip.store;
+  const f = snip.filter.trim().toLowerCase();
+  const list = store.snippets
+    .map((s, i) => ({ s, i }))
+    .filter(({ s }) => !f || s.trigger.toLowerCase().includes(f) || (!s.secret && s.text.toLowerCase().includes(f)))
+    .map(({ s, i }) => `
+    <button class="mode-item ${i === snip.index ? 'active' : ''} ${s.enabled ? '' : 'off'}" data-cmd="snip-select" data-index="${i}">
+      <span class="mode-name snip-trigger">${esc(s.trigger)}</span>
+      <span class="mode-meta">${s.secret ? t('snippets.hiddenText') : esc(snippetPreview(s.text))}${s.enabled ? '' : ` · ${t('snippets.off')}`}</span>
+    </button>`).join('');
+  const remove = esc(tPlain('apps.remove'));
+  const exclude = store.exclude.map((exe, k) => `<span class="chip">${esc(exe)}<button data-cmd="snip-exclude-remove" data-app="${k}" title="${remove}">×</button></span>`).join('');
+  return `<section class="card">
+      <div class="setting-row">
+        <div><strong>${t('snippets.master')}</strong><small>${t('snippets.masterHint')}</small></div>
+        <label class="param check"><input type="checkbox" data-cmd="snip-master" ${store.enabled ? 'checked' : ''} ${snip.busy ? 'disabled' : ''}><span>${t('snippets.on')}</span></label>
+      </div>
+      <div class="setting-row">
+        <div><strong>${t('snippets.exclude')}</strong><small>${t('snippets.excludeHint')}</small></div>
+        <div class="chips">${exclude}<button class="btn small" data-cmd="snip-exclude-add">${icon('plus')} ${t('apps.addApp')}</button></div>
+      </div>
+      <p class="hint">${t('snippets.security')}</p>
+    </section>
+    <div class="modes">
+      <div class="mode-list">
+        ${store.snippets.length > 6 ? `<input type="search" class="snip-search" data-snip-filter placeholder="${esc(tPlain('snippets.search'))}" value="${esc(snip.filter)}">` : ''}
+        ${list || (store.snippets.length ? `<p class="hint pad">${t('snippets.noMatch')}</p>` : '')}
+        <button class="btn ghost" data-cmd="snip-new">${icon('plus')} ${t('snippets.new')}</button>
+      </div>
+      ${snip.draft ? snippetEditor() : `<div class="card muted">${t('snippets.empty')}</div>`}
+    </div>`;
+}
+
+function snippetEditor() {
+  const d = snip.draft;
+  const isNew = snip.index == null;
+  const hidden = d.secret && !snip.reveal;
+  const dirty = snippetDirty();
+  const remove = esc(tPlain('apps.remove'));
+  const apps = d.apps.length
+    ? d.apps.map((exe, k) => `<span class="chip">${esc(exe)}<button data-cmd="snip-remove-app" data-app="${k}" title="${remove}">×</button></span>`).join('')
+    : `<span class="chip all">${t('apps.everyApp')}</span>`;
+  // A hidden text is not even put in the page until "Show" is clicked.
+  const textField = hidden
+    ? `<div class="snip-hidden">${t('snippets.hiddenNote')}</div>`
+    : `<textarea class="snip-text" data-snip="text" rows="6" spellcheck="false" autocomplete="off" maxlength="4000">${esc(d.text)}</textarea>`;
+  return `<section class="card editor">
+    <div class="editor-head">
+      <label class="field grow"><span>${t('snippets.trigger')}</span>
+        <input type="text" class="snip-trigger" data-snip="trigger" value="${esc(d.trigger)}" maxlength="32" spellcheck="false" autocomplete="off">
+      </label>
+      ${isNew ? '' : `<div class="head-actions"><button class="btn danger" data-cmd="snip-delete" ${snip.busy ? 'disabled' : ''}>${t('buttons.delete')}</button></div>`}
+    </div>
+    <p class="hint">${t('snippets.triggerHint')}</p>
+    <div class="field"><span>${t('snippets.text')}</span>${textField}</div>
+    <div class="snip-tools">
+      ${hidden ? '' : SNIP_PLACEHOLDERS.map((p) => `<button class="btn small" data-cmd="snip-insert" data-text="${p}">${p}</button>`).join('')}
+      ${d.secret ? `<button class="btn small" data-cmd="snip-reveal">${snip.reveal ? t('snippets.hide') : t('snippets.show')}</button>` : ''}
+    </div>
+    ${hidden ? '' : `<p class="hint">${t('snippets.placeholders')}</p>`}
+    <div class="setting-row">
+      <div><strong>${t('snippets.where')}</strong><small>${t('snippets.whereHint')}</small></div>
+      <div class="chips">${apps}<button class="btn small" data-cmd="snip-add-app">${icon('plus')} ${d.apps.length ? t('apps.addApp') : t('remap.onlyIn')}</button></div>
+    </div>
+    <div class="setting-row">
+      <div><strong>${t('snippets.options')}</strong></div>
+      <div class="color-controls">
+        <label class="param check"><input type="checkbox" data-cmd="snip-flag" data-flag="enabled" ${d.enabled ? 'checked' : ''}><span>${t('snippets.enabled')}</span></label>
+        <label class="param check" title="${esc(tPlain('snippets.secretHint'))}"><input type="checkbox" data-cmd="snip-flag" data-flag="secret" ${d.secret ? 'checked' : ''}><span>${t('snippets.secret')}</span></label>
+      </div>
+    </div>
+    <div id="snip-problems">${snippetProblems()}</div>
+    <div class="apply-row">
+      <button class="btn primary" data-cmd="snip-save" ${snip.busy || !dirty ? 'disabled' : ''}>${isNew ? t('snippets.create') : t('buttons.save')}</button>
+      ${isNew
+        ? `<button class="btn" data-cmd="snip-cancel">${t('snippets.cancel')}</button>`
+        : `<button class="btn" data-cmd="snip-revert" ${dirty ? '' : 'disabled'}>${t('buttons.discard')}</button>`}
+      <small class="hint">${t('snippets.notHere')}</small>
+    </div>
+  </section>`;
+}
+
+function snippetProblems() {
+  return snip.problems.length
+    ? `<div class="banner error">${t('banners.problems')}<ul>${snip.problems.map((p) => `<li>${esc(p)}</li>`).join('')}</ul></div>`
+    : '';
+}
+
+/** The list as it would be with the draft saved, and the draft's index in it. */
+function storeWithDraft() {
+  const next = clone(snip.store);
+  const draft = { ...clone(snip.draft), trigger: snip.draft.trigger.trim() };
+  draft.apps = draft.apps.map((a) => a.trim().toLowerCase()).filter(Boolean);
+  let index = snip.index;
+  if (index == null) {
+    next.snippets.push(draft);
+    index = next.snippets.length - 1;
+  } else {
+    next.snippets[index] = draft;
+  }
+  return { next, index };
+}
+
+let snipCheckTimer = null;
+/** After typing in the editor: keep the buttons and problems current without redrawing. */
+function snippetEdited() {
+  const dirty = snippetDirty();
+  const saveBtn = $('[data-cmd="snip-save"]');
+  if (saveBtn) saveBtn.disabled = snip.busy || !dirty;
+  const revert = $('[data-cmd="snip-revert"]');
+  if (revert) revert.disabled = !dirty;
+  clearTimeout(snipCheckTimer);
+  snipCheckTimer = setTimeout(async () => {
+    if (!snip.draft) return;
+    try {
+      snip.problems = await invoke('snippets_check', { store: storeWithDraft().next });
+    } catch (e) {
+      snip.problems = [String(e)];
+    }
+    const box = $('#snip-problems');
+    if (box) box.innerHTML = snippetProblems();
+  }, 200);
+}
+
+/** Checks, encrypts and saves `next`. Returns true when saved. */
+async function saveSnippets(next, message) {
+  snip.busy = true;
+  render();
+  let ok = false;
+  try {
+    const problems = await invoke('snippets_check', { store: next });
+    if (problems.length) {
+      snip.problems = problems;
+    } else {
+      await invoke('snippets_save', { store: next });
+      snip.store = next;
+      snip.problems = [];
+      ok = true;
+      toast(tPlain(message));
+    }
+  } catch (e) {
+    toast(tPlain('snippets.saveFailed', { error: e }), true);
+  }
+  snip.busy = false;
+  render();
+  return ok;
+}
+
+const snippetCommands = {
+  'snip-select': (el) => {
+    const i = Number(el.dataset.index);
+    if (i === snip.index || !leaveSnippetOk()) return;
+    selectSnippet(i);
+    render();
+  },
+  'snip-new': () => {
+    if (!leaveSnippetOk()) return;
+    selectSnippet(null);
+    render();
+    const input = $('input[data-snip="trigger"]');
+    input?.focus();
+    input?.setSelectionRange(input.value.length, input.value.length);
+  },
+  'snip-cancel': () => {
+    if (!leaveSnippetOk()) return;
+    if (snip.store.snippets.length) selectSnippet(0);
+    else snip.draft = null;
+    render();
+  },
+  'snip-revert': () => { selectSnippet(snip.index); render(); },
+  'snip-save': async () => {
+    const { next, index } = storeWithDraft();
+    if (await saveSnippets(next, snip.index == null ? 'snippets.created' : 'snippets.saved')) {
+      const reveal = snip.reveal;
+      selectSnippet(index);
+      snip.reveal = reveal;
+      render();
+    }
+  },
+  'snip-delete': async () => {
+    const trigger = snip.store.snippets[snip.index]?.trigger;
+    if (!confirm(tPlain('snippets.confirmDelete', { trigger }))) return;
+    const next = clone(snip.store);
+    next.snippets.splice(snip.index, 1);
+    const at = snip.index;
+    if (await saveSnippets(next, 'snippets.deleted')) {
+      if (next.snippets.length) selectSnippet(Math.min(at, next.snippets.length - 1));
+      else snip.draft = null;
+      render();
+    }
+  },
+  'snip-reveal': () => { snip.reveal = !snip.reveal; render(); },
+  'snip-insert': (el) => {
+    const area = $('textarea[data-snip="text"]');
+    if (!area) return;
+    area.focus();
+    area.setRangeText(el.dataset.text, area.selectionStart, area.selectionEnd, 'end');
+    snip.draft.text = area.value;
+    snippetEdited();
+  },
+  'snip-add-app': () => openPicker(0, 'snippet'),
+  'snip-remove-app': (el) => {
+    snip.draft.apps.splice(Number(el.dataset.app), 1);
+    render();
+    snippetEdited();
+  },
+  'snip-exclude-add': () => openPicker(0, 'snippetExclude'),
+  'snip-exclude-remove': (el) => {
+    const next = clone(snip.store);
+    next.exclude.splice(Number(el.dataset.app), 1);
+    saveSnippets(next, 'snippets.savedSettings');
+  },
+};
+
+const snippetChangeCommands = {
+  'snip-master': (el) => {
+    const next = clone(snip.store);
+    next.enabled = el.checked;
+    saveSnippets(next, 'snippets.savedSettings');
+  },
+  'snip-flag': (el) => {
+    snip.draft[el.dataset.flag] = el.checked;
+    if (el.dataset.flag === 'secret') snip.reveal = el.checked;
+    render();
+    snippetEdited();
+  },
+};
+
 // ---------- macros page
 
 const currentMacro = () => state.config.macros[state.macroIndex];
@@ -1385,6 +1689,24 @@ function addSituation(effect, when) {
 
 function addApp(exe) {
   const name = exe.trim();
+  if (state.pickerFor === 'snippetExclude') {
+    state.picker = null;
+    const lower = name.toLowerCase();
+    if (lower && snip.store && !snip.store.exclude.includes(lower)) {
+      const next = clone(snip.store);
+      next.exclude.push(lower);
+      saveSnippets(next, 'snippets.savedSettings');
+    } else render();
+    return;
+  }
+  if (state.pickerFor === 'snippet') {
+    state.picker = null;
+    const lower = name.toLowerCase();
+    if (lower && snip.draft && !snip.draft.apps.includes(lower)) snip.draft.apps.push(lower);
+    render();
+    snippetEdited();
+    return;
+  }
   if (state.pickerFor === 'effects') {
     const effect = state.config.effects[state.picker];
     state.picker = null;
@@ -1402,7 +1724,16 @@ function addApp(exe) {
 // ---------------------------------------------------------------- commands
 
 const commands = {
-  nav: (el) => { state.page = el.dataset.page; state.recording = null; render(); $('#main').scrollTop = 0; },
+  nav: (el) => {
+    if (state.page === 'snippets' && el.dataset.page !== 'snippets') {
+      if (!leaveSnippetOk()) return;
+      forgetSnippets();
+    }
+    state.page = el.dataset.page;
+    state.recording = null;
+    render();
+    $('#main').scrollTop = 0;
+  },
   save: () => save(),
   discard: () => {
     if (!state.savedJson) return;
@@ -1739,6 +2070,19 @@ function coerce(el) {
 
 document.addEventListener('input', (e) => {
   const el = e.target;
+  if (el.dataset.snip && snip.draft) {
+    snip.draft[el.dataset.snip] = el.value;
+    snippetEdited();
+    return;
+  }
+  if (el.hasAttribute('data-snip-filter')) {
+    snip.filter = el.value;
+    render();
+    const search = $('.snip-search');
+    search?.focus();
+    search?.setSelectionRange(search.value.length, search.value.length);
+    return;
+  }
   if (el.id === 'app-filter') {
     state.appFilter = el.value;
     renderAppList();
@@ -1773,7 +2117,9 @@ document.addEventListener('input', (e) => {
 
 document.addEventListener('change', (e) => {
   const el = e.target;
-  if (el.dataset.cmd && changeCommands[el.dataset.cmd]) {
+  if (el.dataset.cmd && snippetChangeCommands[el.dataset.cmd]) {
+    snippetChangeCommands[el.dataset.cmd](el);
+  } else if (el.dataset.cmd && changeCommands[el.dataset.cmd]) {
     changeCommands[el.dataset.cmd](el);
   } else if (el.dataset.bind && el.type === 'checkbox') {
     setPath(state.config, el.dataset.bind, el.checked);
@@ -1792,7 +2138,7 @@ document.addEventListener('click', (e) => {
   if (!el || el.tagName === 'SELECT' || el.type === 'checkbox' || el.disabled) return;
   // Clicks inside the dialog bubble up to the overlay: only the backdrop closes it.
   if (el.classList.contains('overlay') && e.target !== el) return;
-  commands[el.dataset.cmd]?.(el);
+  (snippetCommands[el.dataset.cmd] ?? commands[el.dataset.cmd])?.(el);
 });
 
 // Key-combination fields: focus one, then press any key or combination.

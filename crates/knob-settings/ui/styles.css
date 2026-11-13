@@ -525,3 +525,28 @@ input[type="color"] { width: 44px; height: 30px; padding: 2px; border: 1px solid
 .when-list { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .when-list .chip { gap: 4px; }
 .when-add { display: flex; align-items: center; gap: 8px; }
+
+/* ---------- snippets */
+.snip-trigger { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; }
+.mode-item.off { opacity: .55; }
+.snip-search { width: 100%; margin-bottom: 6px; }
+.snip-text {
+  width: 100%;
+  min-height: 120px;
+  resize: vertical;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text);
+  font: 14px/1.45 ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+.snip-text:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.snip-hidden {
+  padding: 18px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 7px;
+  color: var(--muted);
+  text-align: center;
+}
+.snip-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }

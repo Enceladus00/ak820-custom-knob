@@ -30,15 +30,16 @@ use windows::Win32::UI::Input::{
 };
 use windows::Win32::UI::WindowsAndMessaging::{
     CallNextHookEx, CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW,
-    EVENT_SYSTEM_DESKTOPSWITCH, EVENT_SYSTEM_FOREGROUND, GIDC_REMOVAL, GetForegroundWindow,
-    GetMessageW, HC_ACTION, HWND_MESSAGE, KBDLLHOOKSTRUCT, KillTimer, MSG, PostThreadMessageW,
-    RegisterClassW, SetTimer, SetWindowsHookExW, TranslateMessage, UnhookWindowsHookEx,
-    WH_KEYBOARD_LL, WINDOW_EX_STYLE, WINDOW_STYLE, WINEVENT_OUTOFCONTEXT, WINEVENT_SKIPOWNPROCESS,
-    WM_INPUT, WM_INPUT_DEVICE_CHANGE, WM_KEYDOWN, WM_QUIT, WM_SYSKEYDOWN, WM_TIMER, WNDCLASSW,
+    EVENT_OBJECT_FOCUS, EVENT_SYSTEM_DESKTOPSWITCH, EVENT_SYSTEM_FOREGROUND, GIDC_REMOVAL,
+    GetForegroundWindow, GetMessageW, HC_ACTION, HWND_MESSAGE, KBDLLHOOKSTRUCT, KillTimer, MSG,
+    PostThreadMessageW, RegisterClassW, SetTimer, SetWindowsHookExW, TranslateMessage,
+    UnhookWindowsHookEx, WH_KEYBOARD_LL, WINDOW_EX_STYLE, WINDOW_STYLE, WINEVENT_OUTOFCONTEXT,
+    WINEVENT_SKIPOWNPROCESS, WM_INPUT, WM_INPUT_DEVICE_CHANGE, WM_KEYDOWN, WM_QUIT, WM_SYSKEYDOWN,
+    WM_TIMER, WNDCLASSW,
 };
 use windows::core::{Result, w};
 
-use crate::{KNOWN_DEVICES, MARKER, clock, output, process};
+use crate::{KNOWN_DEVICES, MARKER, clock, output, process, snippets};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum InputEvent {
@@ -209,6 +210,16 @@ pub fn run(sink: fn(InputEvent)) -> Result<()> {
             WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS,
         );
         log::debug!("input: foreground hook installed");
+        // Snippets pause in password boxes: every focus change is checked.
+        let focus_event = SetWinEventHook(
+            EVENT_OBJECT_FOCUS,
+            EVENT_OBJECT_FOCUS,
+            None,
+            Some(focus_proc),
+            0,
+            0,
+            WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS,
+        );
         // The lock screen and UAC prompts run on another desktop, where key
         // releases never reach the hook: let go of remapped keys first.
         let desktop_event = SetWinEventHook(
@@ -231,6 +242,7 @@ pub fn run(sink: fn(InputEvent)) -> Result<()> {
 
         let _ = UnhookWinEvent(win_event);
         let _ = UnhookWinEvent(desktop_event);
+        let _ = UnhookWinEvent(focus_event);
         let _ = UnhookWindowsHookEx(hook);
         release_remaps();
         let _ = DestroyWindow(hwnd);
@@ -314,6 +326,9 @@ extern "system" fn hook_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESU
                 if decision.swallow {
                     return LRESULT(1);
                 }
+                if snippets::on_key(k.vkCode as u16, k.scanCode, down) {
+                    return LRESULT(1);
+                }
             }
             if let Some(key) = HookKey::from_vk(k.vkCode)
                 && k.dwExtraInfo != MARKER
@@ -332,6 +347,18 @@ extern "system" fn hook_proc(code: i32, wparam: WPARAM, lparam: LPARAM) -> LRESU
         }
         CallNextHookEx(None, code, wparam, lparam)
     }
+}
+
+extern "system" fn focus_proc(
+    _hook: HWINEVENTHOOK,
+    _event: u32,
+    _hwnd: HWND,
+    _id_object: i32,
+    _id_child: i32,
+    _thread: u32,
+    _time: u32,
+) {
+    snippets::focus_changed();
 }
 
 extern "system" fn foreground_proc(
@@ -354,6 +381,7 @@ fn report_foreground(hwnd: HWND) {
             router.set_hotkeys_suspended(exe.eq_ignore_ascii_case(SETTINGS_EXE));
             router.set_foreground(&exe);
         }
+        snippets::set_foreground(&exe, exe.eq_ignore_ascii_case(SETTINGS_EXE));
         emit(InputEvent::Foreground { pid, exe });
     }
 }

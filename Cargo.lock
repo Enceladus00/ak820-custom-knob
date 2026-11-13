@@ -1937,6 +1937,7 @@ dependencies = [
  "knob-core",
  "knob-rgb",
  "log",
+ "toml 1.2.0+spec-1.1.0",
  "windows",
 ]
 

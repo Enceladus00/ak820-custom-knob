@@ -349,6 +349,44 @@ pub fn text(text: &str) {
     send(&inputs);
 }
 
+/// Replaces typed text, for a snippet: `erase` Backspaces, then `text`
+/// (line breaks as Enter, tabs as Tab), then `back` Left presses to leave
+/// the cursor inside it. Held modifiers are let go meanwhile, so Shift
+/// doesn't turn the Left presses into a selection. One `SendInput` call, so
+/// keys typed meanwhile can't land in the middle.
+pub fn replace_typed(erase: usize, text: &str, back: usize) {
+    let tap = |vk: u16| [key_input(vk, true), key_input(vk, false)];
+    let mut inputs: Vec<INPUT> = Vec::new();
+    for _ in 0..erase {
+        inputs.extend(tap(0x08));
+    }
+    let mut units = [0u16; 2];
+    for c in text.chars() {
+        match c {
+            '\r' => {}
+            '\n' => inputs.extend(tap(0x0D)),
+            '\t' => inputs.extend(tap(0x09)),
+            c => {
+                for &unit in c.encode_utf16(&mut units).iter() {
+                    inputs.extend([unicode_input(unit, true), unicode_input(unit, false)]);
+                }
+            }
+        }
+    }
+    for _ in 0..back {
+        inputs.extend(tap(0x25));
+    }
+    let held = SIDED_MODIFIERS
+        .into_iter()
+        .any(|vk| unsafe { GetAsyncKeyState(vk as i32) } < 0);
+    if held {
+        without_modifiers(|| send(&inputs));
+    } else {
+        send(&inputs);
+    }
+    inputs.fill(unicode_input(0, false)); // don't leave the text lying in memory
+}
+
 /// See [`VK_UNASSIGNED`].
 pub fn mask_menu() {
     send(&[

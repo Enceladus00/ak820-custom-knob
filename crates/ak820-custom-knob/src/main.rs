@@ -80,6 +80,7 @@ fn main() {
     extras::start(config.clone());
     effects::start(config.clone());
     game::start();
+    config_file::load_and_watch_snippets();
     let engine = engine_thread::start(config);
     let _ = ENGINE.set(engine.clone());
 
