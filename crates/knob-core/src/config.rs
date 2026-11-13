@@ -2,10 +2,12 @@
 //! (which modes apply to which app).
 
 use std::collections::HashSet;
+use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
 use crate::extras::{HintSettings, MacroDef, MouseSettings};
+use crate::game::{GameState, GameTest};
 use crate::gesture::{GestureKind, GestureTiming};
 use crate::keys::KeyCombo;
 use crate::remap::RemapDef;
@@ -114,11 +116,32 @@ pub struct Effect {
 
 /// When an effect plays by itself, written as text in the config:
 /// `app:<program.exe>` while that program is in front, `mode:<name>` while
-/// that knob mode is active.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// that knob mode is active, `game:<test>` while a game plugin reports it
+/// (see [`GameTest`] for the tests, e.g. `game:effects=burning`,
+/// `game:health<0.25`, `game:event=hurt`).
+#[derive(Debug, Clone, PartialEq)]
 pub enum Situation {
     App(String),
     Mode(String),
+    Game(GameTest),
+}
+
+/// How long an effect bound to a game event plays when its own duration is
+/// 0 (until stopped).
+pub const EVENT_HOLD: Duration = Duration::from_millis(1500);
+
+/// Everything a situation can depend on.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Now<'a> {
+    /// The program in front (its exe name).
+    pub app: &'a str,
+    /// The active knob mode's id and name.
+    pub mode_id: &'a str,
+    pub mode_name: &'a str,
+    /// What a game plugin last reported, while it is still reporting.
+    pub game: Option<&'a GameState>,
+    /// Recent game events: name and how long ago it last came in.
+    pub events: &'a [(String, Duration)],
 }
 
 impl Situation {
@@ -131,35 +154,74 @@ impl Situation {
         match kind.trim() {
             "app" => Some(Situation::App(value.to_lowercase())),
             "mode" => Some(Situation::Mode(value.to_lowercase())),
+            "game" => GameTest::parse(value).map(Situation::Game),
             _ => None,
         }
     }
 
-    /// Whether this situation holds for the program in front (its exe name)
-    /// and the active knob mode (its id or name).
-    pub fn holds(&self, app: &str, mode_id: &str, mode_name: &str) -> bool {
+    /// Whether this situation holds now. For a game event, `hold` is how
+    /// long after the event it keeps holding; the result then says how long
+    /// ago the event came in (so a repeat can restart the effect).
+    fn check(&self, now: &Now, hold: Duration) -> Option<Option<Duration>> {
+        let yes = |b: bool| b.then_some(None);
         match self {
-            Situation::App(exe) => app.eq_ignore_ascii_case(exe),
+            Situation::App(exe) => yes(now.app.eq_ignore_ascii_case(exe)),
             Situation::Mode(m) => {
-                mode_id.eq_ignore_ascii_case(m) || mode_name.eq_ignore_ascii_case(m)
+                yes(now.mode_id.eq_ignore_ascii_case(m) || now.mode_name.eq_ignore_ascii_case(m))
             }
+            Situation::Game(test) => match test.event() {
+                Some(name) => now
+                    .events
+                    .iter()
+                    .filter(|(n, age)| n == name && *age < hold)
+                    .map(|&(_, age)| age)
+                    .min()
+                    .map(Some),
+                None => yes(now.game.is_some_and(|g| test.holds(g))),
+            },
         }
+    }
+
+    /// Whether this situation holds now (game events: within [`EVENT_HOLD`]).
+    pub fn holds(&self, now: &Now) -> bool {
+        self.check(now, EVENT_HOLD).is_some()
+    }
+
+    pub fn is_game(&self) -> bool {
+        matches!(self, Situation::Game(_))
     }
 }
 
+/// What [`effect_for`] picked.
+#[derive(Debug, Clone, Copy)]
+pub struct Pick<'a> {
+    pub effect: &'a Effect,
+    /// Set when a game event started it: how long ago that event came in.
+    pub event_age: Option<Duration>,
+}
+
 /// The effect that should be playing now: the first one in the list with a
-/// situation that holds, so the list order is the priority.
-pub fn effect_for<'a>(
-    effects: &'a [Effect],
-    app: &str,
-    mode_id: &str,
-    mode_name: &str,
-) -> Option<&'a Effect> {
-    effects.iter().find(|e| {
-        e.when
-            .iter()
-            .filter_map(|w| Situation::parse(w))
-            .any(|s| s.holds(app, mode_id, mode_name))
+/// situation that holds, so the list order is the priority. An effect bound
+/// to a game event plays for its own duration after the event (or
+/// [`EVENT_HOLD`] if it has none).
+pub fn effect_for<'a>(effects: &'a [Effect], now: &Now) -> Option<Pick<'a>> {
+    effects.iter().find_map(|effect| {
+        let hold = match effect.duration_ms {
+            0 => EVENT_HOLD,
+            ms => Duration::from_millis(ms.into()),
+        };
+        let mut hit = None;
+        for situation in effect.when.iter().filter_map(|w| Situation::parse(w)) {
+            match (situation.check(now, hold), hit) {
+                (None, _) => {}
+                // An event beats a steady situation, and a newer one an older.
+                (Some(Some(age)), Some(Some(old))) if age >= old => {}
+                (Some(Some(age)), _) => hit = Some(Some(age)),
+                (Some(None), None) => hit = Some(None),
+                (Some(None), Some(_)) => {}
+            }
+        }
+        hit.map(|event_age| Pick { effect, event_age })
     })
 }
 
@@ -225,7 +287,7 @@ impl Effect {
         for when in &self.when {
             if Situation::parse(when).is_none() {
                 errors.push(format!(
-                    "{ctx}: '{when}' is not a situation (use app:<program.exe> or mode:<name>)"
+                    "{ctx}: '{when}' is not a situation (use app:<program.exe>, mode:<name> or game:<test>)"
                 ));
             }
         }
@@ -801,6 +863,7 @@ impl Config {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::game::GameLine;
 
     #[test]
     fn sound_and_open_actions_load_and_check() {
@@ -1062,15 +1125,91 @@ long_press = { action = "open", target = "https://example.com" }
         assert_eq!(Situation::parse("weather:rain"), None);
         assert_eq!(Situation::parse("valheim.exe"), None);
         let s = Situation::parse("app:valheim.exe").unwrap();
-        assert!(s.holds("Valheim.EXE", "m1", "Volume"));
-        assert!(!s.holds("code.exe", "m1", "Volume"));
+        let at = |app, mode_id, mode_name| Now {
+            app,
+            mode_id,
+            mode_name,
+            ..Now::default()
+        };
+        assert!(s.holds(&at("Valheim.EXE", "m1", "Volume")));
+        assert!(!s.holds(&at("code.exe", "m1", "Volume")));
         let m = Situation::parse("mode:volume").unwrap();
-        assert!(m.holds("x.exe", "m1", "Volume"));
+        assert!(m.holds(&at("x.exe", "m1", "Volume")));
         assert!(
             Situation::parse("mode:M1")
                 .unwrap()
-                .holds("x.exe", "m1", "Volume")
+                .holds(&at("x.exe", "m1", "Volume"))
         );
+        assert!(Situation::parse("game:effects=burning").is_some());
+        assert_eq!(Situation::parse("game:health<"), None);
+    }
+
+    #[test]
+    fn game_situations_follow_the_state_and_events() {
+        let GameLine::State(state) = crate::game::parse_line(
+            "knob-game 1 valheim health=0.2 dead=0 effects=burning biome=swamp",
+        )
+        .unwrap() else {
+            panic!()
+        };
+        let burning = Situation::parse("game:effects=burning").unwrap();
+        let hurt = Situation::parse("game:event=hurt").unwrap();
+        assert!(!burning.holds(&Now::default()));
+        let playing = Now {
+            game: Some(&state),
+            ..Now::default()
+        };
+        assert!(burning.holds(&playing));
+        assert!(!hurt.holds(&playing));
+        let events = [("hurt".to_string(), Duration::from_millis(200))];
+        assert!(hurt.holds(&Now {
+            events: &events,
+            ..Now::default()
+        }));
+        let old = [("hurt".to_string(), Duration::from_secs(5))];
+        assert!(!hurt.holds(&Now {
+            events: &old,
+            ..Now::default()
+        }));
+    }
+
+    #[test]
+    fn event_effects_play_for_their_duration_and_win_when_listed_first() {
+        let flash = Effect {
+            name: "Hurt".into(),
+            slot: 7,
+            duration_ms: 300,
+            when: vec!["game:event=hurt".into()],
+            ..effect()
+        };
+        let fire = Effect {
+            name: "Fire".into(),
+            when: vec!["game:effects=burning".into()],
+            ..effect()
+        };
+        let GameLine::State(state) =
+            crate::game::parse_line("knob-game 1 valheim effects=burning").unwrap()
+        else {
+            panic!()
+        };
+        let effects = [flash, fire];
+        let pick = |ms| {
+            let events = [("hurt".to_string(), Duration::from_millis(ms))];
+            effect_for(
+                &effects,
+                &Now {
+                    game: Some(&state),
+                    events: &events,
+                    ..Now::default()
+                },
+            )
+            .map(|p| (p.effect.name.clone(), p.event_age))
+        };
+        assert_eq!(
+            pick(100),
+            Some(("Hurt".into(), Some(Duration::from_millis(100))))
+        );
+        assert_eq!(pick(400), Some(("Fire".into(), None)));
     }
 
     #[test]
@@ -1092,7 +1231,17 @@ long_press = { action = "open", target = "https://example.com" }
             ..effect()
         };
         let effects = [manual, fire, calm];
-        let pick = |app, mode| effect_for(&effects, app, "", mode).map(|e| e.name.as_str());
+        let pick = |app, mode_name| {
+            effect_for(
+                &effects,
+                &Now {
+                    app,
+                    mode_name,
+                    ..Now::default()
+                },
+            )
+            .map(|p| p.effect.name.as_str())
+        };
         assert_eq!(pick("valheim.exe", "volume"), Some("Fire"));
         assert_eq!(pick("code.exe", "Scroll"), Some("Calm"));
         assert_eq!(pick("code.exe", "volume"), None);
@@ -1114,8 +1263,11 @@ long_press = { action = "open", target = "https://example.com" }
     fn situations_round_trip_and_are_omitted_when_empty() {
         let mut config = Config::default_config();
         config.effects[0].when = vec!["app:valheim.exe".into()];
+        config.effects[1].when.clear();
         let text = toml::to_string(&config).unwrap();
-        assert_eq!(text.matches("when = ").count(), 1);
+        let bound = config.effects.iter().filter(|e| !e.when.is_empty()).count();
+        assert_eq!(text.matches("when = ").count(), bound);
+        assert!(bound < config.effects.len());
         assert_eq!(
             Config::from_toml(&text).unwrap().effects[0].when,
             ["app:valheim.exe"]

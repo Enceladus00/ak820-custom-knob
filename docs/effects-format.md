@@ -18,7 +18,15 @@ colors = ["#FF2000", "#FF7000", "#FFC040"]   # 1–4 colours, "#RRGGBB"
 speed = 6                # 1–10
 brightness = 100         # 1–100, percent
 duration_ms = 0          # 0 = until stopped, otherwise stops by itself (max 60000)
+when = ["app:valheim.exe", "game:effects=burning"]   # optional, see below
 ```
+
+`when` lists the situations in which the effect plays by itself; any one
+of them is enough, and the first effect in the list whose situation holds
+wins. `app:<program.exe>` while that program is in front, `mode:<name>`
+while that knob mode is active, `game:<test>` while a game plugin reports it
+(`game:effects=burning`, `game:health<0.25`, `game:event=hurt`...; the full
+list is in [integrations/valheim/README.md](../integrations/valheim/README.md)).
 
 Validation, the same in the UI and in `knob-core`:
 * name is non-empty and unique;

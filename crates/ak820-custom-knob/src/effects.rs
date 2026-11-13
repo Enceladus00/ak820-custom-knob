@@ -1,6 +1,7 @@
 //! The effects thread: keeps the keyboard's effect engine (LIVE v2 firmware)
-//! in step with the situation — which program is in front and which knob
-//! mode is active — using the `when` lists of the configured effects.
+//! in step with the situation — which program is in front, which knob mode
+//! is active and what a game plugin reports (see `game.rs`) — using the
+//! `when` lists of the configured effects.
 //!
 //! Everything it sends is RAM-only on the keyboard: uploading, playing and
 //! stopping effects never writes the keyboard's flash. It talks to the
@@ -14,14 +15,24 @@ use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use knob_core::{Config, Effect, effect_for};
+use knob_core::game::{GameLine, GameState};
+use knob_core::{Config, Effect, Now, effect_for};
 use knob_win::effects::{EffectsError, Keyboard};
 
 /// How often a connected keyboard is checked for a restart (which empties
-/// its RAM), and how long to wait before retrying an absent one.
+/// its RAM).
 const CHECK_EVERY: Duration = Duration::from_secs(20);
+/// How long to wait before trying an absent or sleeping keyboard again.
+const RETRY_AFTER: Duration = Duration::from_secs(5);
 /// After a plug or unplug, give Windows a moment to set the device up.
 const AFTER_PLUG: Duration = Duration::from_secs(2);
+/// A game that hasn't reported for this long has quit (it reports at least
+/// every 0.5 s).
+const GAME_GONE: Duration = Duration::from_secs(3);
+/// While a game reports, how often to look again (event effects run out).
+const GAME_TICK: Duration = Duration::from_millis(50);
+/// Events older than this can't matter (the longest effect is 60 s).
+const EVENT_MEMORY: Duration = Duration::from_secs(61);
 
 pub enum EffectsMsg {
     Config(Box<Config>),
@@ -29,6 +40,7 @@ pub enum EffectsMsg {
     Mode { id: String, name: String },
     KeyboardChanged,
     Paused(bool),
+    Game(GameLine),
 }
 
 static SENDER: OnceLock<Sender<EffectsMsg>> = OnceLock::new();
@@ -61,9 +73,17 @@ struct Effects {
     /// Effects are uploaded; holds the frame counter seen then, to notice
     /// a keyboard restart (the counter starts again from zero).
     uploaded: Option<u32>,
-    /// The slot this thread started, if any.
+    /// The slot this thread started, if any, and when.
     playing: Option<u8>,
+    played_at: Option<Instant>,
+    /// The game's last reported state, and when it came.
+    game: Option<(GameState, Instant)>,
+    /// The latest time each game event came in.
+    events: Vec<(String, Instant)>,
+    /// When to next check an uploaded keyboard for a restart.
     next_check: Instant,
+    /// The earliest time to try uploading again after a failure.
+    retry_at: Instant,
     /// Logged once, so a stock keyboard doesn't fill the log.
     told_no_engine: bool,
 }
@@ -78,19 +98,38 @@ impl Effects {
             paused: false,
             uploaded: None,
             playing: None,
+            played_at: None,
+            game: None,
+            events: Vec::new(),
             next_check: Instant::now(),
+            retry_at: Instant::now(),
             told_no_engine: false,
         }
     }
 
     fn run(mut self, rx: Receiver<EffectsMsg>) {
         loop {
-            let wait = self.next_check.saturating_duration_since(Instant::now());
+            let now = Instant::now();
+            // Uploaded: wake for the restart check. Not yet: wake to retry
+            // once a failed upload may be tried again. Otherwise nothing
+            // was wanted, and a message will wake the thread.
+            let mut wait = match self.uploaded {
+                Some(_) => self.next_check.saturating_duration_since(now),
+                None if self.retry_at > now => self.retry_at - now,
+                None => CHECK_EVERY,
+            };
+            if self.game.is_some() || !self.events.is_empty() {
+                wait = wait.min(GAME_TICK);
+            }
             match rx.recv_timeout(wait) {
                 Ok(msg) => self.handle(msg),
-                Err(RecvTimeoutError::Timeout) => self.check(),
+                Err(RecvTimeoutError::Timeout) => {}
                 Err(RecvTimeoutError::Disconnected) => return,
             }
+            if self.uploaded.is_some() && Instant::now() >= self.next_check {
+                self.check();
+            }
+            self.forget_old();
             self.sync();
         }
     }
@@ -111,28 +150,63 @@ impl Effects {
             EffectsMsg::KeyboardChanged => {
                 self.uploaded = None;
                 self.playing = None;
-                self.next_check = Instant::now() + AFTER_PLUG;
+                self.retry_at = Instant::now() + AFTER_PLUG;
             }
             EffectsMsg::Paused(paused) => self.paused = paused,
+            EffectsMsg::Game(GameLine::State(state)) => self.game = Some((state, Instant::now())),
+            EffectsMsg::Game(GameLine::Event { name, .. }) => {
+                let now = Instant::now();
+                match self.events.iter_mut().find(|(n, _)| *n == name) {
+                    Some(seen) => seen.1 = now,
+                    None => self.events.push((name, now)),
+                }
+            }
         }
+    }
+
+    /// Drops a game that stopped reporting and events too old to matter.
+    fn forget_old(&mut self) {
+        if self
+            .game
+            .as_ref()
+            .is_some_and(|(_, at)| at.elapsed() > GAME_GONE)
+        {
+            log::info!("effects: the game stopped reporting");
+            self.game = None;
+        }
+        self.events.retain(|(_, at)| at.elapsed() < EVENT_MEMORY);
     }
 
     fn in_use(&self) -> bool {
         self.effects.iter().any(|e| !e.when.is_empty())
     }
 
-    /// The slot that should be playing now.
-    fn wanted(&self) -> Option<u8> {
+    /// The slot that should be playing now, and the game event that started
+    /// it, if one did.
+    fn wanted(&self) -> Option<(u8, Option<Instant>)> {
         if self.paused {
             return None;
         }
-        effect_for(&self.effects, &self.app, &self.mode_id, &self.mode_name)
-            .filter(|e| e.to_def().is_some())
-            .map(|e| e.slot)
+        let now = Instant::now();
+        let events: Vec<_> = self
+            .events
+            .iter()
+            .map(|(n, at)| (n.clone(), now.duration_since(*at)))
+            .collect();
+        let situation = Now {
+            app: &self.app,
+            mode_id: &self.mode_id,
+            mode_name: &self.mode_name,
+            game: self.game.as_ref().map(|(g, _)| g),
+            events: &events,
+        };
+        effect_for(&self.effects, &situation)
+            .filter(|p| p.effect.to_def().is_some())
+            .map(|p| (p.effect.slot, p.event_age.map(|age| now - age)))
     }
 
-    /// Periodic: notice a restarted keyboard (its RAM, and our effects, are
-    /// gone) or retry one that wasn't there.
+    /// Periodic, while effects are uploaded: notice a restarted keyboard
+    /// (its RAM, and our effects, are gone) so they are uploaded again.
     fn check(&mut self) {
         self.next_check = Instant::now() + CHECK_EVERY;
         if !self.in_use() {
@@ -160,21 +234,26 @@ impl Effects {
         if !self.in_use() {
             return;
         }
-        let wanted = self.wanted();
+        let (wanted, trigger) = match self.wanted() {
+            Some((slot, trigger)) => (Some(slot), trigger),
+            None => (None, None),
+        };
         if self.uploaded.is_none() {
             if wanted.is_none() && self.playing.is_none() {
                 return; // nothing to show yet: upload when it's needed
             }
-            if Instant::now() < self.next_check {
+            if Instant::now() < self.retry_at {
                 return;
             }
             if let Err(e) = self.upload() {
                 self.report(e);
-                self.next_check = Instant::now() + CHECK_EVERY;
+                self.retry_at = Instant::now() + RETRY_AFTER;
                 return;
             }
         }
-        if wanted == self.playing {
+        // The same event again restarts its effect (a second hit flashes too).
+        let again = trigger.is_some_and(|t| self.played_at.is_none_or(|p| p < t));
+        if wanted == self.playing && !again {
             return;
         }
         let result = Keyboard::open().and_then(|k| match wanted {
@@ -191,11 +270,12 @@ impl Effects {
                     }
                 );
                 self.playing = wanted;
+                self.played_at = Some(Instant::now());
             }
             Err(e) => {
                 self.report(e);
                 self.uploaded = None;
-                self.next_check = Instant::now() + CHECK_EVERY;
+                self.retry_at = Instant::now() + RETRY_AFTER;
             }
         }
     }
@@ -212,6 +292,7 @@ impl Effects {
         }
         log::info!("effects: uploaded {count} to the keyboard (RAM only)");
         self.uploaded = Some(info.frames);
+        self.next_check = Instant::now() + CHECK_EVERY;
         self.playing = None;
         self.told_no_engine = false;
         Ok(())

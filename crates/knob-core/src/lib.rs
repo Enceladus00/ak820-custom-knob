@@ -12,6 +12,7 @@ pub mod classify;
 pub mod config;
 pub mod engine;
 pub mod extras;
+pub mod game;
 pub mod gesture;
 pub mod hint_style;
 pub mod keys;
@@ -22,8 +23,8 @@ pub mod router;
 pub mod signal;
 
 pub use config::{
-    Action, Config, ConfigError, Effect, LightingLayout, Mode, MouseButton, Profile, Situation,
-    Theme, UiPrefs, effect_for,
+    Action, Config, ConfigError, Effect, LightingLayout, Mode, MouseButton, Now, Pick, Profile,
+    Situation, Theme, UiPrefs, effect_for,
 };
 pub use engine::{Engine, Output};
 pub use gesture::{Gesture, GestureKind, accel_factor};

@@ -144,6 +144,10 @@ speed = 3
 # speed:       1 to 10
 # brightness:  1 to 100 (percent)
 # duration_ms: 0 plays until stopped; otherwise it stops by itself (up to 60000)
+# when:        plays by itself while any of these holds; the first matching
+#              effect in this list wins. "app:valheim.exe", "mode:Volume", or
+#              "game:..." from a game plugin, e.g. "game:effects=burning",
+#              "game:health<0.25", "game:event=hurt" (integrations/valheim)
 
 [[effects]]
 name = "Fire"
@@ -153,6 +157,7 @@ colors = ["#FF2000", "#FF7000", "#FFC040"]
 speed = 6
 brightness = 100
 duration_ms = 0
+when = ["game:effects=burning"]
 
 [[effects]]
 name = "Frost"
@@ -162,6 +167,7 @@ colors = ["#A0E8FF", "#2060FF", "#FFFFFF"]
 speed = 3
 brightness = 100
 duration_ms = 0
+when = ["game:effects=frost", "game:effects=freezing"]
 
 [[effects]]
 name = "Poison"
@@ -171,6 +177,7 @@ colors = ["#40FF20", "#003000"]
 speed = 5
 brightness = 100
 duration_ms = 0
+when = ["game:effects=poison"]
 
 [[effects]]
 name = "Low health"
@@ -180,6 +187,7 @@ colors = ["#FF0000", "#200000"]
 speed = 8
 brightness = 100
 duration_ms = 0
+when = ["game:health<0.25"]
 
 [[effects]]
 name = "Shock"
@@ -189,6 +197,7 @@ colors = ["#101030", "#FFFFFF", "#80C0FF"]
 speed = 9
 brightness = 100
 duration_ms = 0
+when = ["game:effects=lightning"]
 
 # ---------------------------------------------------------------- key remapping
 # Off until you add a rule. Each [[remap]] turns one key or shortcut into

@@ -16,6 +16,7 @@ mod config_file;
 mod effects;
 mod engine_thread;
 mod extras;
+mod game;
 mod hint_overlay;
 mod i18n;
 mod logger;
@@ -78,6 +79,7 @@ fn main() {
 
     extras::start(config.clone());
     effects::start(config.clone());
+    game::start();
     let engine = engine_thread::start(config);
     let _ = ENGINE.set(engine.clone());
 

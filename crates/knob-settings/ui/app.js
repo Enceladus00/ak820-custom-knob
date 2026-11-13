@@ -778,7 +778,15 @@ function effectEditor(effect, i, full) {
             <option value="">${t('effects.whenMode')}</option>
             ${state.config.modes.map((m) => `<option value="${esc(m.name)}">${esc(m.name)}</option>`).join('')}
           </select>
+          <select data-cmd="effect-when-game" aria-label="${esc(tPlain('effects.whenGame'))}">
+            <option value="">${t('effects.whenGame')}</option>
+            ${Object.entries(GAME_SITUATIONS).map(([group, tests]) => `
+              <optgroup label="${esc(tPlain(`effects.game.${group}`))}">
+                ${tests.map((test) => `<option value="${esc(test)}">${esc(gameLabel(test))}</option>`).join('')}
+              </optgroup>`).join('')}
+          </select>
         </div>
+        ${(effect.when ?? []).some((w) => String(w).startsWith('game:')) ? `<small class="hint">${t('effects.whenGameHint')}</small>` : ''}
       </div>
     </div>
     <div class="apply-row">
@@ -789,12 +797,31 @@ function effectEditor(effect, i, full) {
   </section>`;
 }
 
-/** "app:valheim.exe" → "App: valheim.exe"; "mode:Volume" → "Mode: Volume". */
+/** The `game:` situations offered in the picker; see knob-core game.rs. */
+const GAME_SITUATIONS = {
+  state: ['valheim', 'effects=burning', 'effects=frost', 'effects=freezing', 'effects=poison',
+    'effects=lightning', 'effects=resting', 'effects=wet', 'effects=cold', 'effects=smoked',
+    'health<0.25', 'dead'],
+  surroundings: ['boss', 'night', 'weather~thunder', 'biome=meadows', 'biome=blackforest',
+    'biome=swamp', 'biome=mountain', 'biome=plains', 'biome=mistlands', 'biome=ashlands',
+    'biome=deepnorth', 'biome=ocean'],
+  moments: ['event=hurt', 'event=hit', 'event=kill', 'event=bosskill', 'event=parry',
+    'event=levelup', 'event=power_used', 'event=power_ready'],
+};
+
+/** "effects=burning" → "Burning"; anything not in the picker is shown as written. */
+function gameLabel(test) {
+  const known = Object.values(GAME_SITUATIONS).some((tests) => tests.includes(test));
+  return known ? tPlain(`effects.game.${test.replace(/[^a-z0-9]/g, '_')}`) : test;
+}
+
+/** "app:valheim.exe" → "App: valheim.exe"; "mode:Volume" → "Mode: Volume"; "game:boss" → "Game: Boss fight". */
 function situationLabel(when) {
   const [kind, ...rest] = String(when).split(':');
   const value = rest.join(':').trim();
   if (kind === 'app') return tPlain('effects.whenAppLabel', { app: value });
   if (kind === 'mode') return tPlain('effects.whenModeLabel', { mode: value });
+  if (kind === 'game') return tPlain('effects.whenGameLabel', { what: gameLabel(value) });
   return when;
 }
 
@@ -1679,6 +1706,11 @@ const changeCommands = {
     const effect = currentEffect();
     if (!effect || !el.value) return;
     addSituation(effect, `mode:${el.value}`);
+  },
+  'effect-when-game': (el) => {
+    const effect = currentEffect();
+    if (!effect || !el.value) return;
+    addSituation(effect, `game:${el.value}`);
   },
   'effect-pattern': (el) => { currentEffect().pattern = el.value; changed(); },
   language: (el) => { state.config.ui.language = el.value; changed(); },
