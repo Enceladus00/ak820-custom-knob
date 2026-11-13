@@ -66,6 +66,8 @@ pub fn start(config: Config) {
 
 struct Effects {
     effects: Vec<Effect>,
+    /// The master switch: effects follow situations at all.
+    automatic: bool,
     app: String,
     mode_id: String,
     mode_name: String,
@@ -92,6 +94,7 @@ impl Effects {
     fn new(config: Config) -> Self {
         Self {
             effects: config.effects,
+            automatic: config.effects_automatic,
             app: String::new(),
             mode_id: String::new(),
             mode_name: String::new(),
@@ -137,6 +140,7 @@ impl Effects {
     fn handle(&mut self, msg: EffectsMsg) {
         match msg {
             EffectsMsg::Config(config) => {
+                self.automatic = config.effects_automatic;
                 if config.effects != self.effects {
                     self.effects = config.effects;
                     self.uploaded = None; // definitions may have changed
@@ -177,8 +181,9 @@ impl Effects {
         self.events.retain(|(_, at)| at.elapsed() < EVENT_MEMORY);
     }
 
+    /// Some effect may start by itself.
     fn in_use(&self) -> bool {
-        self.effects.iter().any(|e| !e.when.is_empty())
+        self.automatic && self.effects.iter().any(|e| e.enabled && !e.when.is_empty())
     }
 
     /// The slot that should be playing now, and the game event that started
@@ -231,10 +236,12 @@ impl Effects {
 
     /// Brings the keyboard in line with what should be playing.
     fn sync(&mut self) {
-        if !self.in_use() {
+        let in_use = self.in_use();
+        // Switched off: stop what this thread started, then leave the keyboard alone.
+        if !in_use && self.playing.is_none() {
             return;
         }
-        let (wanted, trigger) = match self.wanted() {
+        let (wanted, trigger) = match self.wanted().filter(|_| in_use) {
             Some((slot, trigger)) => (Some(slot), trigger),
             None => (None, None),
         };

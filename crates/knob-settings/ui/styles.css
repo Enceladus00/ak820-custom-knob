@@ -550,3 +550,4 @@ input[type="color"] { width: 44px; height: 30px; padding: 2px; border: 1px solid
   text-align: center;
 }
 .snip-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 8px; }
+.setting-row.dimmed { opacity: .5; }

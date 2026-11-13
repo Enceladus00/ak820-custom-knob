@@ -176,7 +176,11 @@ function fromRust(raw) {
   }
   for (const r of config.remaps) r.apps ??= [];
   for (const m of config.macros) m.apps ??= [];
-  for (const e of config.effects ?? []) e.when ??= [];
+  for (const e of config.effects ?? []) {
+    e.when ??= [];
+    e.enabled ??= true;
+  }
+  config.effects_automatic ??= true;
   return config;
 }
 
@@ -693,9 +697,9 @@ function effectsPage() {
   const effects = state.config.effects;
   state.effectIndex = Math.min(state.effectIndex, Math.max(0, effects.length - 1));
   const list = effects.map((e, i) => `
-    <button class="mode-item ${i === state.effectIndex ? 'active' : ''}" data-cmd="select-effect" data-index="${i}">
+    <button class="mode-item ${i === state.effectIndex ? 'active' : ''} ${e.enabled ? '' : 'off'}" data-cmd="select-effect" data-index="${i}">
       <span class="mode-name">${effectSwatch(e)}${esc(e.name) || t('modes.unnamed')}</span>
-      <span class="mode-meta">${t('effects.slotN', { slot: e.slot })} · ${PATTERNS.includes(e.pattern) ? t(`effects.patterns.${e.pattern}`) : esc(e.pattern)}</span>
+      <span class="mode-meta">${t('effects.slotN', { slot: e.slot })} · ${PATTERNS.includes(e.pattern) ? t(`effects.patterns.${e.pattern}`) : esc(e.pattern)}${e.enabled ? '' : ` · ${t('effects.off')}`}</span>
     </button>`).join('');
   const full = effects.length >= EFFECT_SLOTS;
   const effect = currentEffect();
@@ -703,7 +707,13 @@ function effectsPage() {
     effectPreview.running = true;
     requestAnimationFrame(drawEffectPreview);
   }
-  return `<div class="modes">
+  return `<section class="card">
+      <div class="setting-row">
+        <div><strong>${t('effects.automatic')}</strong><small>${t('effects.automaticHint')}</small></div>
+        ${checkParam('effects_automatic', state.config.effects_automatic, t('effects.on'))}
+      </div>
+    </section>
+    <div class="modes">
     <div class="mode-list">
       ${list}
       <button class="btn ghost" data-cmd="add-effect" ${full ? 'disabled' : ''}>${icon('plus')} ${t('effects.newEffect')}</button>
@@ -769,7 +779,11 @@ function effectEditor(effect, i, full) {
       <div><strong>${t('effects.duration')}</strong><small>${t('effects.durationHint')}</small></div>
       ${numberParam(`effects.${i}.duration_ms`, effect.duration_ms, 0, 60000, t('effects.ms'))}
     </div>
-    <div class="setting-row effect-when">
+    <div class="setting-row">
+      <div><strong>${t('effects.active')}</strong><small>${t(state.config.effects_automatic ? 'effects.activeHint' : 'effects.activeHintAllOff')}</small></div>
+      ${checkParam(`effects.${i}.enabled`, effect.enabled, t('effects.on'))}
+    </div>
+    <div class="setting-row effect-when ${effect.enabled && state.config.effects_automatic ? '' : 'dimmed'}">
       <div><strong>${t('effects.when')}</strong><small>${t('effects.whenHint')}</small></div>
       <div class="when-list">
         ${(effect.when ?? []).map((w, j) => `
@@ -2123,7 +2137,7 @@ document.addEventListener('change', (e) => {
     changeCommands[el.dataset.cmd](el);
   } else if (el.dataset.bind && el.type === 'checkbox') {
     setPath(state.config, el.dataset.bind, el.checked);
-    changed(el.dataset.bind.endsWith('.until_stopped'));
+    changed(el.dataset.bind.endsWith('.until_stopped') || /^effects(\.\d+\.enabled|_automatic)$/.test(el.dataset.bind));
   } else if (el.dataset.special) {
     if (!el.value) return;
     setPath(state.config, el.dataset.special, el.value);

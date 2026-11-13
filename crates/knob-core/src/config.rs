@@ -28,6 +28,10 @@ pub enum ConfigError {
 #[serde(deny_unknown_fields)]
 pub struct Config {
     pub version: u32,
+    /// Effects start and stop by themselves (their `when` situations).
+    /// Off: they only play when started by hand.
+    #[serde(default = "yes", skip_serializing_if = "is_yes")]
+    pub effects_automatic: bool,
     #[serde(default)]
     pub ui: UiPrefs,
     #[serde(default)]
@@ -108,6 +112,9 @@ pub struct Effect {
     /// 0 plays until stopped; otherwise it stops by itself (at most 60000).
     #[serde(default)]
     pub duration_ms: u32,
+    /// Off: never starts by itself, though its situations are kept.
+    #[serde(default = "yes", skip_serializing_if = "is_yes")]
+    pub enabled: bool,
     /// Situations in which the effect plays by itself, see [`Situation`].
     /// Empty: only when started by hand.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -205,7 +212,7 @@ pub struct Pick<'a> {
 /// to a game event plays for its own duration after the event (or
 /// [`EVENT_HOLD`] if it has none).
 pub fn effect_for<'a>(effects: &'a [Effect], now: &Now) -> Option<Pick<'a>> {
-    effects.iter().find_map(|effect| {
+    effects.iter().filter(|e| e.enabled).find_map(|effect| {
         let hold = match effect.duration_ms {
             0 => EVENT_HOLD,
             ms => Duration::from_millis(ms.into()),
@@ -510,6 +517,10 @@ fn default_mic_step() -> u32 {
 fn one() -> u32 {
     1
 }
+fn is_yes(value: &bool) -> bool {
+    *value
+}
+
 fn yes() -> bool {
     true
 }
@@ -1107,8 +1118,51 @@ long_press = { action = "open", target = "https://example.com" }
             speed: 5,
             brightness: 100,
             duration_ms: 0,
+            enabled: true,
             when: vec![],
         }
+    }
+
+    #[test]
+    fn switched_off_effects_never_start_by_themselves() {
+        let fire = Effect {
+            name: "Fire".into(),
+            enabled: false,
+            when: vec!["app:valheim.exe".into()],
+            ..effect()
+        };
+        let calm = Effect {
+            name: "Calm".into(),
+            slot: 2,
+            when: vec!["app:valheim.exe".into()],
+            ..effect()
+        };
+        let effects = [fire, calm];
+        let now = Now {
+            app: "valheim.exe",
+            ..Now::default()
+        };
+        assert_eq!(effect_for(&effects, &now).unwrap().effect.name, "Calm");
+        assert!(effect_for(&effects[..1], &now).is_none());
+    }
+
+    #[test]
+    fn on_switches_are_only_written_when_off() {
+        let mut config = Config::default_config();
+        assert!(config.effects_automatic && config.effects.iter().all(|e| e.enabled));
+        let text = toml::to_string(&config).unwrap();
+        assert!(!text.contains("effects_automatic"));
+        config.effects_automatic = false;
+        config.effects[0].enabled = false;
+        let off = toml::to_string(&config).unwrap();
+        assert!(off.contains("effects_automatic = false"));
+        assert_eq!(
+            off.matches("enabled = ").count(),
+            text.matches("enabled = ").count() + 1
+        );
+        let back = Config::from_toml(&off).unwrap();
+        assert!(!back.effects_automatic);
+        assert!(!back.effects[0].enabled && back.effects[1].enabled);
     }
 
     #[test]
