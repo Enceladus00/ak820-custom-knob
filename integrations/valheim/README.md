@@ -13,7 +13,6 @@ under "Plays automatically when". Or write it in `config.toml`:
 ```toml
 [[effects]]
 name = "Fire"
-slot = 1
 pattern = "flicker"
 colors = ["#FF2000", "#FF7000", "#FFC040"]
 speed = 6

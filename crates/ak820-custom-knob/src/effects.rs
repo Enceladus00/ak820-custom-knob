@@ -8,6 +8,11 @@
 //! keyboard only while some effect has a situation, so nothing changes for
 //! anyone who doesn't use them, and it runs on its own thread because a
 //! sleeping keyboard takes over a second to time out.
+//!
+//! The keyboard holds 8 effects; the config may have any number. Slots 1 to
+//! 7 are a cache ([`SlotCache`]): an effect that isn't in one is uploaded
+//! into a free or the least recently played slot just before it plays.
+//! Slot 8 belongs to the Settings window's Play button.
 
 use std::panic::{AssertUnwindSafe, catch_unwind};
 use std::sync::OnceLock;
@@ -15,6 +20,7 @@ use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
 use std::thread;
 use std::time::{Duration, Instant};
 
+use knob_core::config::EFFECT_CACHE_SLOTS;
 use knob_core::game::{GameLine, GameState};
 use knob_core::{Config, Effect, Now, effect_for};
 use knob_win::effects::{EffectsError, Keyboard};
@@ -72,11 +78,14 @@ struct Effects {
     mode_id: String,
     mode_name: String,
     paused: bool,
-    /// Effects are uploaded; holds the frame counter seen then, to notice
-    /// a keyboard restart (the counter starts again from zero).
-    uploaded: Option<u32>,
-    /// The slot this thread started, if any, and when.
-    playing: Option<u8>,
+    /// Talking to an engine; holds the frame counter seen then, to notice
+    /// a keyboard restart (the counter starts again from zero, and its RAM,
+    /// with the uploaded effects, is empty).
+    connected: Option<u32>,
+    /// Which effect each cache slot holds.
+    cache: SlotCache,
+    /// What this thread started, if anything ([`effect_key`]), and when.
+    playing: Option<EffectKey>,
     played_at: Option<Instant>,
     /// The game's last reported state, and when it came.
     game: Option<(GameState, Instant)>,
@@ -99,7 +108,8 @@ impl Effects {
             mode_id: String::new(),
             mode_name: String::new(),
             paused: false,
-            uploaded: None,
+            connected: None,
+            cache: SlotCache::default(),
             playing: None,
             played_at: None,
             game: None,
@@ -116,7 +126,7 @@ impl Effects {
             // Uploaded: wake for the restart check. Not yet: wake to retry
             // once a failed upload may be tried again. Otherwise nothing
             // was wanted, and a message will wake the thread.
-            let mut wait = match self.uploaded {
+            let mut wait = match self.connected {
                 Some(_) => self.next_check.saturating_duration_since(now),
                 None if self.retry_at > now => self.retry_at - now,
                 None => CHECK_EVERY,
@@ -129,7 +139,7 @@ impl Effects {
                 Err(RecvTimeoutError::Timeout) => {}
                 Err(RecvTimeoutError::Disconnected) => return,
             }
-            if self.uploaded.is_some() && Instant::now() >= self.next_check {
+            if self.connected.is_some() && Instant::now() >= self.next_check {
                 self.check();
             }
             self.forget_old();
@@ -141,10 +151,9 @@ impl Effects {
         match msg {
             EffectsMsg::Config(config) => {
                 self.automatic = config.effects_automatic;
-                if config.effects != self.effects {
-                    self.effects = config.effects;
-                    self.uploaded = None; // definitions may have changed
-                }
+                // An edited effect no longer matches its cached copy, so it
+                // is uploaded again when it next plays.
+                self.effects = config.effects;
             }
             EffectsMsg::Foreground(exe) => self.app = exe,
             EffectsMsg::Mode { id, name } => {
@@ -152,8 +161,7 @@ impl Effects {
                 self.mode_name = name;
             }
             EffectsMsg::KeyboardChanged => {
-                self.uploaded = None;
-                self.playing = None;
+                self.forget_keyboard();
                 self.retry_at = Instant::now() + AFTER_PLUG;
             }
             EffectsMsg::Paused(paused) => self.paused = paused,
@@ -186,9 +194,9 @@ impl Effects {
         self.automatic && self.effects.iter().any(|e| e.enabled && !e.when.is_empty())
     }
 
-    /// The slot that should be playing now, and the game event that started
-    /// it, if one did.
-    fn wanted(&self) -> Option<(u8, Option<Instant>)> {
+    /// The effect that should be playing now, and the game event that
+    /// started it, if one did.
+    fn wanted(&self) -> Option<(Effect, Option<Instant>)> {
         if self.paused {
             return None;
         }
@@ -206,32 +214,37 @@ impl Effects {
             events: &events,
         };
         effect_for(&self.effects, &situation)
-            .filter(|p| p.effect.to_def().is_some())
-            .map(|p| (p.effect.slot, p.event_age.map(|age| now - age)))
+            .filter(|p| effect_key(p.effect).is_some())
+            .map(|p| (p.effect.clone(), p.event_age.map(|age| now - age)))
     }
 
-    /// Periodic, while effects are uploaded: notice a restarted keyboard
-    /// (its RAM, and our effects, are gone) so they are uploaded again.
+    /// Periodic, while connected: notice a restarted keyboard (its RAM, and
+    /// our effects, are gone) so they are uploaded again.
     fn check(&mut self) {
         self.next_check = Instant::now() + CHECK_EVERY;
         if !self.in_use() {
             return;
         }
-        let Some(seen) = self.uploaded else { return };
+        let Some(seen) = self.connected else { return };
         let result = Keyboard::open().and_then(|k| k.require_engine());
         match result {
             Ok(info) if info.frames >= seen => {}
             Ok(_) => {
                 log::info!("effects: the keyboard restarted; uploading again");
-                self.uploaded = None;
-                self.playing = None;
+                self.forget_keyboard();
             }
             Err(e) => {
                 log::debug!("effects: keyboard check failed: {e}");
-                self.uploaded = None;
-                self.playing = None;
+                self.forget_keyboard();
             }
         }
+    }
+
+    /// The keyboard went away or restarted: nothing on it can be trusted.
+    fn forget_keyboard(&mut self) {
+        self.connected = None;
+        self.cache = SlotCache::default();
+        self.playing = None;
     }
 
     /// Brings the keyboard in line with what should be playing.
@@ -242,17 +255,17 @@ impl Effects {
             return;
         }
         let (wanted, trigger) = match self.wanted().filter(|_| in_use) {
-            Some((slot, trigger)) => (Some(slot), trigger),
+            Some((effect, trigger)) => (Some(effect), trigger),
             None => (None, None),
         };
-        if self.uploaded.is_none() {
+        if self.connected.is_none() {
             if wanted.is_none() && self.playing.is_none() {
-                return; // nothing to show yet: upload when it's needed
+                return; // nothing to show yet: connect when it's needed
             }
             if Instant::now() < self.retry_at {
                 return;
             }
-            if let Err(e) = self.upload() {
+            if let Err(e) = self.connect() {
                 self.report(e);
                 self.retry_at = Instant::now() + RETRY_AFTER;
                 return;
@@ -260,47 +273,83 @@ impl Effects {
         }
         // The same event again restarts its effect (a second hit flashes too).
         let again = trigger.is_some_and(|t| self.played_at.is_none_or(|p| p < t));
-        if wanted == self.playing && !again {
+        let wanted_key = wanted.as_ref().and_then(effect_key);
+        if wanted_key == self.playing && !again {
             return;
         }
-        let result = Keyboard::open().and_then(|k| match wanted {
-            Some(slot) => k.play(slot),
-            None => k.stop(),
+        let result = Keyboard::open().and_then(|k| match &wanted {
+            Some(effect) => self.play(&k, effect).map(Some),
+            None => k.stop().map(|()| None),
         });
         match result {
-            Ok(()) => {
-                log::info!(
-                    "effects: {}",
-                    match wanted {
-                        Some(slot) => format!("playing slot {slot}"),
-                        None => "stopped".into(),
+            Ok(slot) => {
+                match (&wanted, slot) {
+                    (Some(effect), Some(slot)) => {
+                        log::info!("effects: playing '{}' (slot {slot})", effect.name)
                     }
-                );
-                self.playing = wanted;
+                    _ => log::info!("effects: stopped"),
+                }
+                self.playing = wanted_key;
                 self.played_at = Some(Instant::now());
             }
             Err(e) => {
                 self.report(e);
-                self.uploaded = None;
+                self.forget_keyboard();
                 self.retry_at = Instant::now() + RETRY_AFTER;
             }
         }
     }
 
-    fn upload(&mut self) -> Result<(), EffectsError> {
+    /// Plays `effect`, uploading it first unless a cache slot holds it.
+    /// Returns the slot it plays from.
+    fn play(&mut self, keyboard: &Keyboard, effect: &Effect) -> Result<u8, EffectsError> {
+        let key = effect_key(effect).ok_or_else(|| invalid(effect))?;
+        let slot = match self.cache.find(&key) {
+            Some(slot) => slot,
+            None => {
+                // Never push out the effect showing now: switching away from
+                // it is what this upload is for, and it may be needed again.
+                let showing = self.playing.and_then(|k| self.cache.find(&k));
+                let slot = self.cache.room(showing);
+                let def = effect.to_def(slot).ok_or_else(|| invalid(effect))?;
+                // Unknown until the keyboard confirms the new contents.
+                self.cache.clear(slot);
+                keyboard.define(&def)?;
+                self.cache.put(slot, key);
+                log::debug!("effects: uploaded '{}' to slot {slot} (RAM only)", effect.name);
+                slot
+            }
+        };
+        keyboard.play(slot)?;
+        self.cache.touch(slot);
+        Ok(slot)
+    }
+
+    /// Checks for the engine, then uploads ahead the first effects that may
+    /// start by themselves, so they start with a single command.
+    fn connect(&mut self) -> Result<(), EffectsError> {
         let keyboard = Keyboard::open()?;
         let info = keyboard.require_engine()?;
-        let mut count = 0;
-        for effect in &self.effects {
-            if let Some(def) = effect.to_def() {
-                keyboard.define(&def)?;
-                count += 1;
-            }
-        }
-        log::info!("effects: uploaded {count} to the keyboard (RAM only)");
-        self.uploaded = Some(info.frames);
-        self.next_check = Instant::now() + CHECK_EVERY;
+        self.cache = SlotCache::default();
         self.playing = None;
+        let mut count = 0;
+        for effect in self.effects.iter().filter(|e| e.enabled && !e.when.is_empty()) {
+            let Some(key) = effect_key(effect) else { continue };
+            if self.cache.find(&key).is_some() {
+                continue; // the same look under another name
+            }
+            let Some(slot) = self.cache.free() else { break };
+            let def = effect.to_def(slot).ok_or_else(|| invalid(effect))?;
+            keyboard.define(&def)?;
+            self.cache.put(slot, key);
+            count += 1;
+        }
+        log::info!(
+            "effects: connected; uploaded {count} of {} effects ahead (RAM only)",
+            self.effects.len()
+        );
+        self.connected = Some(info.frames);
+        self.next_check = Instant::now() + CHECK_EVERY;
         self.told_no_engine = false;
         Ok(())
     }
@@ -315,5 +364,150 @@ impl Effects {
             EffectsError::NoKeyboard | EffectsError::NoReply => log::debug!("effects: {e}"),
             e => log::warn!("effects: {e}"),
         }
+    }
+}
+
+/// What identifies an effect on the keyboard: its definition without the
+/// slot. Two effects that look the same share a cache slot.
+type EffectKey = [u8; 18];
+
+fn effect_key(effect: &Effect) -> Option<EffectKey> {
+    let payload = effect.to_def(*EFFECT_CACHE_SLOTS.start())?.payload();
+    payload[1..].try_into().ok()
+}
+
+fn invalid(effect: &Effect) -> EffectsError {
+    EffectsError::Failed(format!("effect '{}' can't be sent", effect.name))
+}
+
+const CACHE_LEN: usize = 7;
+const _: () = assert!(
+    (*EFFECT_CACHE_SLOTS.end() - *EFFECT_CACHE_SLOTS.start()) as usize + 1 == CACHE_LEN
+);
+
+/// The effects this thread uploaded into slots 1 to 7, and when each last
+/// played.
+#[derive(Default)]
+struct SlotCache {
+    slots: [Option<(EffectKey, Option<Instant>)>; CACHE_LEN],
+}
+
+impl SlotCache {
+    fn index(slot: u8) -> usize {
+        (slot - EFFECT_CACHE_SLOTS.start()) as usize
+    }
+
+    fn slot(index: usize) -> u8 {
+        EFFECT_CACHE_SLOTS.start() + index as u8
+    }
+
+    /// The slot holding `key`.
+    fn find(&self, key: &EffectKey) -> Option<u8> {
+        self.slots
+            .iter()
+            .position(|s| s.as_ref().is_some_and(|(k, _)| k == key))
+            .map(Self::slot)
+    }
+
+    fn free(&self) -> Option<u8> {
+        self.slots.iter().position(Option::is_none).map(Self::slot)
+    }
+
+    /// Where a new effect goes: a free slot, else the one played longest
+    /// ago (never played counts as oldest), but never `keep`.
+    fn room(&self, keep: Option<u8>) -> u8 {
+        if let Some(slot) = self.free() {
+            return slot;
+        }
+        (0..CACHE_LEN)
+            .filter(|&i| Some(Self::slot(i)) != keep)
+            .min_by_key(|&i| self.slots[i].as_ref().and_then(|(_, used)| *used))
+            .map(Self::slot)
+            .unwrap_or(*EFFECT_CACHE_SLOTS.start())
+    }
+
+    fn put(&mut self, slot: u8, key: EffectKey) {
+        self.slots[Self::index(slot)] = Some((key, None));
+    }
+
+    fn clear(&mut self, slot: u8) {
+        self.slots[Self::index(slot)] = None;
+    }
+
+    fn touch(&mut self, slot: u8) {
+        if let Some((_, used)) = &mut self.slots[Self::index(slot)] {
+            *used = Some(Instant::now());
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use knob_core::config::Pattern;
+
+    fn key(n: u8) -> EffectKey {
+        [n; 18]
+    }
+
+    #[test]
+    fn fills_free_slots_first() {
+        let mut cache = SlotCache::default();
+        for n in 0..7 {
+            let slot = cache.room(None);
+            assert_eq!(slot, n + 1);
+            cache.put(slot, key(n));
+        }
+        assert_eq!(cache.free(), None);
+        assert_eq!(cache.find(&key(3)), Some(4));
+        assert_eq!(cache.find(&key(9)), None);
+    }
+
+    #[test]
+    fn makes_room_in_the_least_recently_played_slot() {
+        let mut cache = SlotCache::default();
+        for n in 0..7 {
+            cache.put(n + 1, key(n));
+        }
+        // Every slot but 3 played, oldest first; 3 never played.
+        for slot in [1, 2, 4, 5, 6, 7] {
+            cache.touch(slot);
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        assert_eq!(cache.room(None), 3);
+        cache.touch(3);
+        // Now slot 1 is the oldest, unless it is the one showing.
+        assert_eq!(cache.room(None), 1);
+        assert_eq!(cache.room(Some(1)), 2);
+    }
+
+    #[test]
+    fn same_look_shares_a_slot_and_any_change_does_not() {
+        let fire = Effect {
+            name: "Fire".into(),
+            legacy_slot: None,
+            pattern: Pattern::Flicker,
+            colors: vec!["#FF2000".into()],
+            speed: 6,
+            brightness: 100,
+            duration_ms: 0,
+            enabled: true,
+            when: vec![],
+        };
+        let renamed = Effect {
+            name: "Burning".into(),
+            ..fire.clone()
+        };
+        let faster = Effect {
+            speed: 7,
+            ..fire.clone()
+        };
+        assert_eq!(effect_key(&fire), effect_key(&renamed));
+        assert_ne!(effect_key(&fire), effect_key(&faster));
+        let broken = Effect {
+            colors: vec![],
+            ..fire
+        };
+        assert_eq!(effect_key(&broken), None);
     }
 }

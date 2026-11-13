@@ -651,7 +651,6 @@ async function applyLayout() {
 // in the browser. Nothing here talks to the keyboard yet.
 
 const PATTERNS = ['solid', 'pulse', 'wave', 'flicker', 'sparkle'];
-const EFFECT_SLOTS = 8;
 const EFFECT_MAX_COLORS = 4;
 
 // knob_rgb::KEYS (crates/knob-rgb/src/lib.rs): name, row, column.
@@ -689,12 +688,6 @@ function effectSwatch(effect) {
   return `<span class="swatch" style="background:${paint}"></span>`;
 }
 
-function freeEffectSlot(except) {
-  const used = new Set(state.config.effects.filter((e) => e !== except).map((e) => e.slot));
-  for (let slot = 1; slot <= EFFECT_SLOTS; slot++) if (!used.has(slot)) return slot;
-  return null;
-}
-
 function uniqueEffectName(base) {
   const names = new Set(state.config.effects.map((e) => e.name.trim().toLowerCase()));
   if (!names.has(base.trim().toLowerCase())) return base;
@@ -710,9 +703,8 @@ function effectsPage() {
   const list = effects.map((e, i) => `
     <button class="mode-item ${i === state.effectIndex ? 'active' : ''} ${e.enabled ? '' : 'off'}" data-cmd="select-effect" data-index="${i}">
       <span class="mode-name">${effectSwatch(e)}${esc(e.name) || t('modes.unnamed')}</span>
-      <span class="mode-meta">${t('effects.slotN', { slot: e.slot })} · ${PATTERNS.includes(e.pattern) ? t(`effects.patterns.${e.pattern}`) : esc(e.pattern)}${e.enabled ? '' : ` · ${t('effects.off')}`}</span>
+      <span class="mode-meta">${PATTERNS.includes(e.pattern) ? t(`effects.patterns.${e.pattern}`) : esc(e.pattern)}${e.enabled ? '' : ` · ${t('effects.off')}`}</span>
     </button>`).join('');
-  const full = effects.length >= EFFECT_SLOTS;
   const effect = currentEffect();
   if (!effectPreview.running) {
     effectPreview.running = true;
@@ -727,10 +719,9 @@ function effectsPage() {
     <div class="modes">
     <div class="mode-list">
       ${list}
-      <button class="btn ghost" data-cmd="add-effect" ${full ? 'disabled' : ''}>${icon('plus')} ${t('effects.newEffect')}</button>
-      ${full ? `<small class="hint">${t('effects.slotsFull')}</small>` : ''}
+      <button class="btn ghost" data-cmd="add-effect">${icon('plus')} ${t('effects.newEffect')}</button>
     </div>
-    ${effect ? effectEditor(effect, state.effectIndex, full) : `<div class="card muted">${t('effects.empty')}</div>`}
+    ${effect ? effectEditor(effect, state.effectIndex) : `<div class="card muted">${t('effects.empty')}</div>`}
   </div>`;
 }
 
@@ -740,12 +731,7 @@ const effectRange = (i, key, min, max, value) => `<div class="range-field">
   <output>${esc(value)}</output>
 </div>`;
 
-function effectEditor(effect, i, full) {
-  const taken = new Map(state.config.effects.filter((e) => e !== effect).map((e) => [e.slot, e.name]));
-  const slots = Array.from({ length: EFFECT_SLOTS }, (_, n) => n + 1).map((slot) => {
-    const label = taken.has(slot) ? t('effects.slotTaken', { slot, name: taken.get(slot) }) : t('effects.slotN', { slot });
-    return `<option value="${slot}" ${slot === effect.slot ? 'selected' : ''}>${label}</option>`;
-  }).join('');
+function effectEditor(effect, i) {
   const patterns = PATTERNS.map((p) => `<option value="${p}" ${p === effect.pattern ? 'selected' : ''}>${t(`effects.patterns.${p}`)}</option>`).join('');
   const colors = effect.colors.map((c, j) => `<span class="effect-color">
       <input type="color" data-bind="effects.${i}.colors.${j}" value="${esc(String(c).toLowerCase())}" aria-label="${esc(tPlain('effects.colorN', { n: j + 1 }))}">
@@ -758,7 +744,7 @@ function effectEditor(effect, i, full) {
         <input type="text" data-bind="effects.${i}.name" value="${esc(effect.name)}" maxlength="40" spellcheck="false">
       </label>
       <div class="head-actions">
-        <button class="btn" data-cmd="duplicate-effect" ${full ? 'disabled' : ''}>${t('buttons.duplicate')}</button>
+        <button class="btn" data-cmd="duplicate-effect">${t('buttons.duplicate')}</button>
         <button class="btn danger" data-cmd="delete-effect">${t('buttons.delete')}</button>
       </div>
     </div>
@@ -768,10 +754,6 @@ function effectEditor(effect, i, full) {
         <small class="hint">${t('effects.previewHint')}</small>
         <button class="btn small" data-cmd="effect-restart">${t('effects.restart')}</button>
       </div>
-    </div>
-    <div class="setting-row">
-      <div><strong>${t('effects.slot')}</strong><small>${t('effects.slotHint')}</small></div>
-      <select data-cmd="effect-slot" aria-label="${esc(tPlain('effects.slot'))}">${slots}</select>
     </div>
     <div class="setting-row">
       <div><strong>${t('effects.pattern')}</strong><small>${patternHint}</small></div>
@@ -1944,12 +1926,10 @@ const commands = {
   'apply-layout': () => applyLayout(),
   'select-effect': (el) => { state.effectIndex = Number(el.dataset.index); render(); },
   'add-effect': () => {
-    const slot = freeEffectSlot();
-    if (slot == null) return;
     const effects = state.config.effects;
     effects.push({
       name: uniqueEffectName(tPlain('effects.newName')),
-      slot, pattern: 'solid', colors: ['#66CCFF'], speed: 5, brightness: 100, duration_ms: 0,
+      pattern: 'solid', colors: ['#66CCFF'], speed: 5, brightness: 100, duration_ms: 0,
     });
     state.effectIndex = effects.length - 1;
     changed();
@@ -1958,11 +1938,8 @@ const commands = {
     input?.select();
   },
   'duplicate-effect': () => {
-    const slot = freeEffectSlot();
-    if (slot == null) return;
     const copy = clone(currentEffect());
     copy.name = uniqueEffectName(tPlain('modes.copyName', { name: copy.name }));
-    copy.slot = slot;
     state.config.effects.splice(state.effectIndex + 1, 0, copy);
     state.effectIndex += 1;
     changed();
@@ -2057,7 +2034,6 @@ const changeCommands = {
     changed();
   },
   'layout-colorful': (el) => { currentLayout().colorful = el.checked; changed(); },
-  'effect-slot': (el) => { currentEffect().slot = Number(el.value); changed(); },
   'effect-when-mode': (el) => {
     const effect = currentEffect();
     if (!effect || !el.value) return;

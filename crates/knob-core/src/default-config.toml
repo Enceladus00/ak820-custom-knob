@@ -136,9 +136,10 @@ speed = 3
 # ---------------------------------------------------------------- effects
 # Effects for the patched keyboard firmware, made on the Effects page in
 # Settings. They are kept in the keyboard's memory only (never its flash), and
-# a game or the knob starts and stops them by slot. See docs/effects-format.md.
+# a game or the knob starts and stops them. Any number of effects: the
+# keyboard holds 8 at a time, and the app uploads each one when it plays.
+# See docs/effects-format.md.
 #
-# slot:        1 to 8, each used once
 # pattern:     solid, pulse, wave, flicker, sparkle
 # colors:      1 to 4 colours, "#RRGGBB"
 # speed:       1 to 10
@@ -151,7 +152,6 @@ speed = 3
 
 [[effects]]
 name = "Fire"
-slot = 1
 pattern = "flicker"
 colors = ["#FF2000", "#FF7000", "#FFC040"]
 speed = 6
@@ -161,7 +161,6 @@ when = ["game:effects=burning"]
 
 [[effects]]
 name = "Frost"
-slot = 2
 pattern = "wave"
 colors = ["#A0E8FF", "#2060FF", "#FFFFFF"]
 speed = 3
@@ -171,7 +170,6 @@ when = ["game:effects=frost", "game:effects=freezing"]
 
 [[effects]]
 name = "Poison"
-slot = 3
 pattern = "pulse"
 colors = ["#40FF20", "#003000"]
 speed = 5
@@ -181,7 +179,6 @@ when = ["game:effects=poison"]
 
 [[effects]]
 name = "Low health"
-slot = 4
 pattern = "pulse"
 colors = ["#FF0000", "#200000"]
 speed = 8
@@ -191,7 +188,6 @@ when = ["game:health<0.25"]
 
 [[effects]]
 name = "Shock"
-slot = 5
 pattern = "sparkle"
 colors = ["#101030", "#FFFFFF", "#80C0FF"]
 speed = 9

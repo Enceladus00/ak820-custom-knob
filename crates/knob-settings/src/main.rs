@@ -211,7 +211,8 @@ fn effect_firmware() -> EffectFirmware {
     }
 }
 
-/// Uploads the effect being edited and plays it on the keyboard. RAM-only:
+/// Uploads the effect being edited to the preview slot and plays it on the
+/// keyboard. RAM-only:
 /// nothing is stored in the keyboard's flash.
 #[tauri::command(async)]
 fn effect_play(effect: Effect) -> Result<(), String> {
@@ -220,7 +221,11 @@ fn effect_play(effect: Effect) -> Result<(), String> {
     if let Some(problem) = errors.into_iter().next() {
         return Err(problem);
     }
-    let def = effect.to_def().ok_or("the effect can't be sent")?;
+    // Slot 8 is kept for previews, so this never replaces an effect the
+    // background program has uploaded.
+    let def = effect
+        .to_def(knob_core::config::EFFECT_PREVIEW_SLOT)
+        .ok_or("the effect can't be sent")?;
     knob_win::effects::play_now(&def).map_err(|e| e.to_string())
 }
 

@@ -2,17 +2,20 @@
 
 This is the contract between the settings page (where effects are made and
 edited) and the keyboard's effect engine (LIVE v2 firmware, see
-[custom-firmware.md](custom-firmware.md)). Effects live in the config. The
-app uploads them to the keyboard's **RAM** when it connects, and a game or
-the knob starts and stops them with one command each. Nothing about
-effects is ever written to the keyboard's flash.
+[custom-firmware.md](custom-firmware.md)). Effects live in the config, as many
+as you like. The keyboard's **RAM** holds 8 at a time: the background
+program keeps slots 1–7 as a cache, uploading an effect into a free (or the
+least recently used) slot just before it plays it, and the Settings Play
+button uses slot 8 so a preview never pushes out a cached effect. A game or
+the knob starts and stops effects with one command each (two when the
+effect isn't cached yet). Nothing about effects is ever written to the
+keyboard's flash.
 
 ## Config (`config.toml`)
 
 ```toml
 [[effects]]
 name = "Fire"            # shown in the UI, unique, non-empty
-slot = 1                 # 1–8: where it lives on the keyboard
 pattern = "flicker"      # solid | pulse | wave | flicker | sparkle
 colors = ["#FF2000", "#FF7000", "#FFC040"]   # 1–4 colours, "#RRGGBB"
 speed = 6                # 1–10
@@ -28,22 +31,24 @@ while that knob mode is active, `game:<test>` while a game plugin reports it
 (`game:effects=burning`, `game:health<0.25`, `game:event=hurt`...; the full
 list is in [integrations/valheim/README.md](../integrations/valheim/README.md)).
 
+Configs from older versions have a `slot = N` line per effect. It still
+loads, is ignored, and disappears the next time the config is saved.
+
 Validation, the same in the UI and in `knob-core`:
 * name is non-empty and unique;
-* slot is 1–8 and unique;
 * pattern is one of the five values;
 * 1–4 colours, each `#RRGGBB`;
 * speed is 1–10, brightness 1–100, duration 0–60000.
 
 Default effects shipped in `default-config.toml`:
 
-| name | slot | pattern | colours | speed |
-|---|---|---|---|---|
-| Fire | 1 | flicker | `#FF2000` `#FF7000` `#FFC040` | 6 |
-| Frost | 2 | wave | `#A0E8FF` `#2060FF` `#FFFFFF` | 3 |
-| Poison | 3 | pulse | `#40FF20` `#003000` | 5 |
-| Low health | 4 | pulse | `#FF0000` `#200000` | 8 |
-| Shock | 5 | sparkle | `#101030` `#FFFFFF` `#80C0FF` | 9 |
+| name | pattern | colours | speed |
+|---|---|---|---|
+| Fire | flicker | `#FF2000` `#FF7000` `#FFC040` | 6 |
+| Frost | wave | `#A0E8FF` `#2060FF` `#FFFFFF` | 3 |
+| Poison | pulse | `#40FF20` `#003000` | 5 |
+| Low health | pulse | `#FF0000` `#200000` | 8 |
+| Shock | sparkle | `#101030` `#FFFFFF` `#80C0FF` | 9 |
 
 ## Patterns
 

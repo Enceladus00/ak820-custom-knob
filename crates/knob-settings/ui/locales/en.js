@@ -353,11 +353,6 @@ registerLocale('en', 'English', {
     newEffect: 'New effect',
     empty: 'No effects yet. Create one to get started.',
     confirmDelete: 'Delete the effect “{name}”?',
-    slotsFull: 'All 8 slots are in use. Delete an effect to make room.',
-    slot: 'Slot',
-    slotHint: 'Where the effect lives on the keyboard. Games and the knob start it by this number.',
-    slotN: 'Slot {slot}',
-    slotTaken: 'Slot {slot} (used by {name})',
     pattern: 'Pattern',
     patterns: {
       solid: 'Solid',

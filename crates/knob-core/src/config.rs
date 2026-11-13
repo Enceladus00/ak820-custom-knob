@@ -91,7 +91,16 @@ impl Pattern {
     }
 }
 
+/// The keyboard holds 8 effects at a time. Effects in the config don't own
+/// one: the background program uploads each effect into a slot just before
+/// it plays (slots 1 to 7, the least recently used one making room), and the
+/// Settings window's Play button uses the last.
 pub const EFFECT_SLOTS: std::ops::RangeInclusive<u8> = 1..=8;
+/// The slots the background program swaps effects in and out of.
+pub const EFFECT_CACHE_SLOTS: std::ops::RangeInclusive<u8> = 1..=7;
+/// The slot the Settings window plays previews in, so a preview never
+/// replaces an effect the background program has uploaded.
+pub const EFFECT_PREVIEW_SLOT: u8 = 8;
 pub const EFFECT_MAX_COLORS: usize = 4;
 pub const EFFECT_MAX_DURATION_MS: u32 = 60_000;
 
@@ -100,8 +109,10 @@ pub const EFFECT_MAX_DURATION_MS: u32 = 60_000;
 #[serde(deny_unknown_fields)]
 pub struct Effect {
     pub name: String,
-    /// 1 to 8: where it lives on the keyboard.
-    pub slot: u8,
+    /// Ignored. Older versions kept each effect in a fixed keyboard slot;
+    /// such configs still load, and saving drops the line.
+    #[serde(default, rename = "slot", skip_serializing)]
+    pub legacy_slot: Option<u8>,
     pub pattern: Pattern,
     /// 1 to 4 colours, `#RRGGBB`.
     pub colors: Vec<String>,
@@ -233,8 +244,8 @@ pub fn effect_for<'a>(effects: &'a [Effect], now: &Now) -> Option<Pick<'a>> {
 }
 
 impl Effect {
-    /// The keyboard command form of this effect, if it is valid.
-    pub fn to_def(&self) -> Option<knob_rgb::EffectDef> {
+    /// The keyboard command that stores this effect in `slot`, if it is valid.
+    pub fn to_def(&self, slot: u8) -> Option<knob_rgb::EffectDef> {
         let pattern = match self.pattern {
             Pattern::Solid => knob_rgb::Pattern::Solid,
             Pattern::Pulse => knob_rgb::Pattern::Pulse,
@@ -244,7 +255,7 @@ impl Effect {
         };
         let colors = self.rgb_colors()?;
         knob_rgb::EffectDef::new(
-            self.slot,
+            slot,
             pattern,
             self.speed,
             self.brightness,
@@ -263,14 +274,11 @@ impl Effect {
     }
 
     /// Adds a message to `errors` for everything wrong with this effect on
-    /// its own. Unique names and slots are checked by [`check_effects`].
+    /// its own. Unique names are checked by [`check_effects`].
     pub fn check(&self, errors: &mut Vec<String>) {
         let ctx = format!("effect '{}'", self.name);
         if self.name.trim().is_empty() {
             errors.push("an effect has no name".into());
-        }
-        if !EFFECT_SLOTS.contains(&self.slot) {
-            errors.push(format!("{ctx}: slot must be 1 to 8"));
         }
         if !(1..=EFFECT_MAX_COLORS).contains(&self.colors.len()) {
             errors.push(format!("{ctx}: needs 1 to 4 colours"));
@@ -301,10 +309,9 @@ impl Effect {
     }
 }
 
-/// Checks every effect, and that no two share a name or a slot.
+/// Checks every effect, and that no two share a name.
 pub fn check_effects(effects: &[Effect], errors: &mut Vec<String>) {
     let mut names = HashSet::new();
-    let mut slots = HashSet::new();
     for effect in effects {
         effect.check(errors);
         let name = effect.name.trim().to_lowercase();
@@ -313,9 +320,6 @@ pub fn check_effects(effects: &[Effect], errors: &mut Vec<String>) {
                 "effect name '{}' is used twice",
                 effect.name.trim()
             ));
-        }
-        if EFFECT_SLOTS.contains(&effect.slot) && !slots.insert(effect.slot) {
-            errors.push(format!("effect slot {} is used twice", effect.slot));
         }
     }
 }
@@ -1112,7 +1116,7 @@ long_press = { action = "open", target = "https://example.com" }
     fn effect() -> Effect {
         Effect {
             name: "Test".into(),
-            slot: 1,
+            legacy_slot: None,
             pattern: Pattern::Pulse,
             colors: vec!["#FF2000".into(), "#200000".into()],
             speed: 5,
@@ -1133,7 +1137,6 @@ long_press = { action = "open", target = "https://example.com" }
         };
         let calm = Effect {
             name: "Calm".into(),
-            slot: 2,
             when: vec!["app:valheim.exe".into()],
             ..effect()
         };
@@ -1231,7 +1234,6 @@ long_press = { action = "open", target = "https://example.com" }
     fn event_effects_play_for_their_duration_and_win_when_listed_first() {
         let flash = Effect {
             name: "Hurt".into(),
-            slot: 7,
             duration_ms: 300,
             when: vec!["game:event=hurt".into()],
             ..effect()
@@ -1275,13 +1277,11 @@ long_press = { action = "open", target = "https://example.com" }
         };
         let calm = Effect {
             name: "Calm".into(),
-            slot: 2,
             when: vec!["mode:scroll".into(), "app:valheim.exe".into()],
             ..effect()
         };
         let manual = Effect {
             name: "Manual".into(),
-            slot: 3,
             ..effect()
         };
         let effects = [manual, fire, calm];
@@ -1308,9 +1308,9 @@ long_press = { action = "open", target = "https://example.com" }
             ..effect()
         };
         assert_eq!(effect_problems(&[bad]).len(), 1);
-        let def = effect().to_def().unwrap();
-        assert_eq!(def.slot(), 1);
-        assert_eq!(def.payload()[..5], [1, 1, 5, 100, 2]);
+        let def = effect().to_def(3).unwrap();
+        assert_eq!(def.slot(), 3);
+        assert_eq!(def.payload()[..5], [3, 1, 5, 100, 2]);
     }
 
     #[test]
@@ -1339,16 +1339,16 @@ long_press = { action = "open", target = "https://example.com" }
         let effects = Config::default_config().effects;
         let summary: Vec<_> = effects
             .iter()
-            .map(|e| (e.name.as_str(), e.slot, e.pattern, e.colors.len(), e.speed))
+            .map(|e| (e.name.as_str(), e.pattern, e.colors.len(), e.speed))
             .collect();
         assert_eq!(
             summary,
             [
-                ("Fire", 1, Pattern::Flicker, 3, 6),
-                ("Frost", 2, Pattern::Wave, 3, 3),
-                ("Poison", 3, Pattern::Pulse, 2, 5),
-                ("Low health", 4, Pattern::Pulse, 2, 8),
-                ("Shock", 5, Pattern::Sparkle, 3, 9),
+                ("Fire", Pattern::Flicker, 3, 6),
+                ("Frost", Pattern::Wave, 3, 3),
+                ("Poison", Pattern::Pulse, 2, 5),
+                ("Low health", Pattern::Pulse, 2, 8),
+                ("Shock", Pattern::Sparkle, 3, 9),
             ]
         );
         assert_eq!(effects[0].rgb_colors().unwrap()[0], [0xFF, 0x20, 0x00]);
@@ -1407,7 +1407,6 @@ long_press = { action = "open", target = "https://example.com" }
             effect(),
             Effect {
                 name: "One colour".into(),
-                slot: 8,
                 colors: vec!["#ffffff".into()],
                 speed: 10,
                 brightness: 1,
@@ -1416,7 +1415,6 @@ long_press = { action = "open", target = "https://example.com" }
             },
             Effect {
                 name: "Four".into(),
-                slot: 2,
                 colors: vec!["#000000".into(); 4],
                 speed: 1,
                 ..effect()
@@ -1430,14 +1428,6 @@ long_press = { action = "open", target = "https://example.com" }
         for bad in [
             Effect {
                 name: " ".into(),
-                ..effect()
-            },
-            Effect {
-                slot: 0,
-                ..effect()
-            },
-            Effect {
-                slot: 9,
                 ..effect()
             },
             Effect {
@@ -1486,24 +1476,41 @@ long_press = { action = "open", target = "https://example.com" }
     }
 
     #[test]
-    fn effect_names_and_slots_must_be_unique() {
+    fn effect_names_must_be_unique() {
         let other = Effect {
             name: "Other".into(),
-            slot: 2,
             ..effect()
         };
         assert!(effect_problems(&[effect(), other.clone()]).is_empty());
         let same_name = Effect {
             name: " test ".into(),
-            ..other.clone()
+            ..other
         };
         assert_eq!(effect_problems(&[effect(), same_name]).len(), 1);
-        let same_slot = Effect { slot: 1, ..other };
-        assert_eq!(effect_problems(&[effect(), same_slot]).len(), 1);
+    }
 
+    #[test]
+    fn more_effects_than_keyboard_slots_are_fine() {
+        let many: Vec<Effect> = (0..20)
+            .map(|i| Effect {
+                name: format!("Effect {i}"),
+                ..effect()
+            })
+            .collect();
+        assert!(effect_problems(&many).is_empty());
+    }
+
+    #[test]
+    fn old_slot_lines_load_and_are_dropped_on_save() {
         let mut config = Config::default_config();
-        config.effects[1].slot = 1;
-        assert!(matches!(config.validate(), Err(ConfigError::Invalid(_))));
+        let text = toml::to_string(&config).unwrap();
+        assert!(!text.contains("slot ="));
+        let old = text.replacen("[[effects]]\n", "[[effects]]\nslot = 4\n", 1);
+        let loaded: Config = toml::from_str(&old).unwrap();
+        assert_eq!(loaded.effects[0].legacy_slot, Some(4));
+        config.effects[0].legacy_slot = Some(4);
+        assert_eq!(loaded, config);
+        assert!(!toml::to_string(&loaded).unwrap().contains("slot ="));
     }
 
     #[test]
